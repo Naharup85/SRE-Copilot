@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sre-copilot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sre_user
+      POSTGRES_PASSWORD: sre_password
+      POSTGRES_DB: sre_copilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sre_user -d sre_copilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sre-copilot-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sre_user:sre_password@postgres:5432/sre_copilot
+      JWT_SECRET: super-secret-production-key-sre-copilot-2026-min-32-chars
+      JWT_EXPIRES_IN: 7d
+      DEPLOYMENT_PROVIDER: mock
+      CORS_ORIGIN: http://localhost:8080,http://localhost:5173
+      LOG_LEVEL: info
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sre-copilot-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    name: sre_copilot_pgdata

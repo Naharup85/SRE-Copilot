@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sre-copilot
+  labels:
+    app.kubernetes.io/name: sre-copilot
+    app.kubernetes.io/part-of: sre-copilot-platform
