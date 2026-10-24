@@ -5,11 +5,11 @@ import { AppError } from '../../utils/errors';
 import { logger } from '../../config/logger';
 import { deploymentWorker } from '../../services/deployment-worker';
 import type { CreateDeploymentInput } from './deployments.types';
-import type { Deployment, DeploymentLog } from '../../db/schema';
+import type { Application,Environment,Deployment,DeploymentLog } from '../../db/schema';
 
 export class DeploymentsService {
   private async verifyEnvironmentOwnership(userId: string, environmentId: string) {
-    const [env] = await db
+    const [result] = await db
       .select({
         env: environments,
         app: applications,
@@ -21,11 +21,36 @@ export class DeploymentsService {
       )
       .limit(1);
 
-    if (!env) {
+    if (!result) {
       throw new AppError('ENVIRONMENT_NOT_FOUND', 'Environment not found', 404);
     }
 
-    return { environment: env.env, application: env.app };
+    const environment: Environment = {
+        id: result.env.id,
+        name: result.env.name,
+        createdAt: result.env.createdAt,
+        updatedAt: result.env.updatedAt,
+        applicationId: result.env.applicationId,
+        clusterName: result.env.clusterName,
+        namespace: result.env.namespace,
+        deploymentName: result.env.deploymentName,
+        containerName: result.env.containerName,
+    };
+    
+    const application: Application = {
+        id: result.app.id,
+        name: result.app.name,
+        createdAt: result.app.createdAt,
+        updatedAt: result.app.updatedAt,
+        description: result.app.description,
+        repositoryUrl: result.app.repositoryUrl,
+        repositoryOwner: result.app.repositoryOwner,
+        repositoryName: result.app.repositoryName,
+        defaultBranch: result.app.defaultBranch,
+        createdBy: result.app.createdBy,
+    };
+
+    return { environment, application };
   }
 
   async create(
@@ -35,7 +60,7 @@ export class DeploymentsService {
   ): Promise<Deployment> {
     const { environment, application } = await this.verifyEnvironmentOwnership(userId, environmentId);
 
-    const [deployment] = await db
+    const [result] = await db
       .insert(deployments)
       .values({
         applicationId: application.id,
@@ -46,6 +71,19 @@ export class DeploymentsService {
         triggeredBy: userId,
       })
       .returning();
+
+    const deployment: Deployment = {
+        status: result.status,
+        id: result.id,
+        createdAt: result.createdAt,
+        applicationId: result.applicationId,
+        environmentId: result.environmentId,
+        version: result.version,
+        commitSha: result.commitSha,
+        triggeredBy: result.triggeredBy,
+        startedAt: result.startedAt,
+        finishedAt: result.finishedAt,
+    };
 
     logger.info(
       { userId, deploymentId: deployment.id, applicationId: application.id, version: input.version },
@@ -66,11 +104,24 @@ export class DeploymentsService {
   async listByEnvironment(userId: string, environmentId: string): Promise<Deployment[]> {
     await this.verifyEnvironmentOwnership(userId, environmentId);
 
-    return db
+    const result = await db
       .select()
       .from(deployments)
       .where(eq(deployments.environmentId, environmentId))
       .orderBy(desc(deployments.createdAt));
+
+    return result.map((r) => ({
+        status: r.status,
+        id: r.id,
+        createdAt: r.createdAt,
+        applicationId: r.applicationId,
+        environmentId: r.environmentId,
+        version: r.version,
+        commitSha: r.commitSha,
+        triggeredBy: r.triggeredBy,
+        startedAt: r.startedAt,
+        finishedAt: r.finishedAt,
+    }));
   }
 
   async listAll(userId: string): Promise<Array<Deployment & { applicationName: string; environmentName: string }>> {
@@ -127,11 +178,19 @@ export class DeploymentsService {
     // Verify ownership first
     await this.getById(userId, deploymentId);
 
-    return db
+    const result = await db
       .select()
       .from(deploymentLogs)
       .where(eq(deploymentLogs.deploymentId, deploymentId))
       .orderBy(deploymentLogs.timestamp);
+
+    return result.map((r) => ({
+        message: r.message,
+        id: r.id,
+        deploymentId: r.deploymentId,
+        level: r.level,
+        timestamp: r.timestamp,
+    }));
   }
 
   async getDashboardStats(userId: string): Promise<{

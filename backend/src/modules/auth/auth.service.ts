@@ -2,13 +2,18 @@ import { db } from '../../db/connection';
 import { users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import argon2 from 'argon2';
-import jwt from 'jsonwebtoken';
-import { env } from '../../config/env';
+import { jwtUtil, JWTUtil } from '../../utils/jwt';
 import { logger } from '../../config/logger';
 import type { RegisterInput, LoginInput, AuthResponse } from './auth.types';
 import { AppError } from '../../utils/errors';
 
 export class AuthService {
+  private readonly jwtUtil: JWTUtil;
+
+  constructor(jwt: JWTUtil = jwtUtil) {
+    this.jwtUtil = jwt;
+  }
+
   async register(input: RegisterInput): Promise<AuthResponse> {
     // Check for existing user
     const existing = await db
@@ -23,7 +28,7 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(input.password);
 
-    const [user] = await db
+    const [result] = await db
       .insert(users)
       .values({
         email: input.email,
@@ -37,35 +42,51 @@ export class AuthService {
         createdAt: users.createdAt,
       });
 
+    const user = {
+      id: result.id,
+      email: result.email,
+      name: result.name,
+      createdAt: result.createdAt,
+    }
     logger.info({ userId: user.id, email: user.email }, 'User registered');
 
-    const token = this.generateToken(user.id, user.email);
+    const accessToken = this.jwtUtil.generateAccessToken({ sub: user.id, email: user.email });
+    const refreshToken = this.jwtUtil.generateRefreshToken({ sub: user.id, email: user.email });
 
-    return { token, user };
+    return { accessToken, refreshToken, user };
   }
 
   async login(input: LoginInput): Promise<AuthResponse> {
-    const [user] = await db
+    const [result] = await db
       .select()
       .from(users)
       .where(eq(users.email, input.email))
       .limit(1);
 
-    if (!user) {
+    if (!result) {
       throw new AppError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
-    const isValidPassword = await argon2.verify(user.passwordHash, input.password);
+    const user = {
+      id: result.id,
+      email: result.email,
+      name: result.name,
+      createdAt: result.createdAt,
+    }
+
+    const isValidPassword = await argon2.verify(result.passwordHash, input.password);
     if (!isValidPassword) {
       throw new AppError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
     logger.info({ userId: user.id }, 'User logged in');
 
-    const token = this.generateToken(user.id, user.email);
+    const accessToken = this.jwtUtil.generateAccessToken({ sub: user.id, email: user.email });
+    const refreshToken = this.jwtUtil.generateRefreshToken({ sub: user.id, email: user.email });
 
     return {
-      token,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -76,7 +97,7 @@ export class AuthService {
   }
 
   async getMe(userId: string): Promise<{ id: string; email: string; name: string; createdAt: Date }> {
-    const [user] = await db
+    const [result] = await db
       .select({
         id: users.id,
         email: users.email,
@@ -87,20 +108,18 @@ export class AuthService {
       .where(eq(users.id, userId))
       .limit(1);
 
-    if (!user) {
+    if (!result) {
       throw new AppError('USER_NOT_FOUND', 'User not found', 404);
     }
 
-    return user;
+    return {
+      id: result.id,
+      email: result.email,
+      name: result.name,
+      createdAt: result.createdAt,
+    };
   }
 
-  private generateToken(userId: string, email: string): string {
-    return jwt.sign(
-      { sub: userId, email },
-      env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions,
-    );
-  }
 }
 
 export const authService = new AuthService();

@@ -1,14 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { applicationsService } from './applications.service';
-import { createApplicationSchema, updateApplicationSchema } from './applications.types';
+import { updateApplicationSchema } from './applications.types';
 import { validate, validateUuid } from '../../utils/validate';
-import { sendSuccess } from '../../utils/response';
+import { sendCreated, sendSuccess } from '../../utils/response';
 
 export const createApplication = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const input = validate(createApplicationSchema, req.body);
+    const input = req.body;
     const app = await applicationsService.create(req.user!.id, input);
-    sendSuccess(res, app, 201);
+    sendCreated(res, app);
   } catch (error) {
     next(error);
   }

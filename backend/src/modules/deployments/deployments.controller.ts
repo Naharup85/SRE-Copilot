@@ -1,16 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { deploymentsService } from './deployments.service';
-import { createDeploymentSchema } from './deployments.types';
-import { validate, validateUuid } from '../../utils/validate';
-import { sendSuccess } from '../../utils/response';
+import { validateUuid } from '../../utils/validate';
+import { sendCreated, sendSuccess } from '../../utils/response';
 
 export const createDeployment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { environmentId } = req.params;
     validateUuid(environmentId, 'environmentId');
-    const input = validate(createDeploymentSchema, req.body);
-    const deployment = await deploymentsService.create(req.user!.id, environmentId, input);
-    sendSuccess(res, deployment, 201);
+    const deployment = await deploymentsService.create(req.user!.id, environmentId, req.body);
+    sendCreated(res, deployment);
   } catch (error) {
     next(error);
   }

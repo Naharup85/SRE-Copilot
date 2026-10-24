@@ -8,7 +8,7 @@ import type { Application } from '../../db/schema';
 
 export class ApplicationsService {
   async create(userId: string, input: CreateApplicationInput): Promise<Application> {
-    const [app] = await db
+    const [result] = await db
       .insert(applications)
       .values({
         ...input,
@@ -16,20 +16,47 @@ export class ApplicationsService {
       })
       .returning();
 
+    const app: Application = {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      createdBy: result.createdBy,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      repositoryUrl: '',
+      repositoryOwner: '',
+      repositoryName: '',
+      defaultBranch: ''
+    };
     logger.info({ userId, applicationId: app.id }, 'Application created');
     return app;
   }
 
   async list(userId: string): Promise<Application[]> {
-    return db
+    const result= await db
       .select()
       .from(applications)
       .where(eq(applications.createdBy, userId))
       .orderBy(applications.createdAt);
+    
+    return result.map((app:Application)=>{
+      return {
+        id: app.id,
+        name: app.name,
+        description: app.description,
+        createdBy: app.createdBy,
+        createdAt: app.createdAt,
+        updatedAt: app.updatedAt,
+        repositoryUrl: '',
+        repositoryOwner: '',
+        repositoryName: '',
+        defaultBranch: ''
+      };
+    });
   }
 
   async getById(userId: string, applicationId: string): Promise<Application> {
-    const [app] = await db
+    const [result] = await db
       .select()
       .from(applications)
       .where(
@@ -37,9 +64,22 @@ export class ApplicationsService {
       )
       .limit(1);
 
-    if (!app) {
+    if (!result) {
       throw new AppError('APPLICATION_NOT_FOUND', 'Application not found', 404);
     }
+
+    const app: Application = {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      createdBy: result.createdBy,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      repositoryUrl: '',
+      repositoryOwner: '',
+      repositoryName: '',
+      defaultBranch: ''
+    };
 
     return app;
   }
@@ -52,13 +92,25 @@ export class ApplicationsService {
     // Verify ownership
     await this.getById(userId, applicationId);
 
-    const [updated] = await db
+    const [result] = await db
       .update(applications)
       .set({ ...input, updatedAt: new Date() })
       .where(eq(applications.id, applicationId))
       .returning();
 
     logger.info({ userId, applicationId }, 'Application updated');
+    const updated: Application = {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      createdBy: result.createdBy,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      repositoryUrl: '',
+      repositoryOwner: '',
+      repositoryName: '',
+      defaultBranch: ''
+    };
     return updated;
   }
 

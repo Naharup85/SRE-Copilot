@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { env } from '../config/env';
+import { jwtUtil } from '../utils/jwt';
 import { AppError } from '../utils/errors';
 
 interface JwtPayload {
@@ -32,7 +32,7 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction): 
   const token = authHeader.substring(7);
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    const payload = jwtUtil.verifyAccessToken(token) as JwtPayload;
     req.user = { id: payload.sub, email: payload.email };
     next();
   } catch (error) {

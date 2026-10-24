@@ -18,6 +18,10 @@ export function sendSuccess<T>(res: Response, data: T, statusCode = 200): void {
   res.status(statusCode).json(body);
 }
 
+export function sendCreated<T>(res: Response, data: T,): void {
+  sendSuccess(res, data, 201);
+}
+
 export function sendError(
   res: Response,
   code: string,

@@ -1,30 +1,40 @@
 import { Request, Response, NextFunction } from 'express';
+import type { CookieOptions } from 'express';
 import { authService } from './auth.service';
-import { registerSchema, loginSchema } from './auth.types';
-import { validate } from '../../utils/validate';
-import { sendSuccess } from '../../utils/response';
+import { sendCreated, sendSuccess } from '../../utils/response';
 
-export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+
+const cookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict'
+}
+
+const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const input = validate(registerSchema, req.body);
-    const result = await authService.register(input);
-    sendSuccess(res, result, 201);
+    const input = req.body;
+    const { accessToken, refreshToken, user } = await authService.register(input);
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    sendCreated(res, user);
   } catch (error) {
     next(error);
   }
 };
 
-export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const input = validate(loginSchema, req.body);
-    const result = await authService.login(input);
-    sendSuccess(res, result);
+    const input = req.body;
+    const { accessToken, refreshToken, user } = await authService.login(input);
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    sendSuccess(res, user);
   } catch (error) {
     next(error);
   }
 };
 
-export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const getMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const user = await authService.getMe(req.user!.id);
     sendSuccess(res, user);
@@ -32,3 +42,9 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
     next(error);
   }
 };
+
+export {
+  register,
+  login,
+  getMe
+}

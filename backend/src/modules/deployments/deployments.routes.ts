@@ -8,13 +8,15 @@ import {
   getDashboardStats,
 } from './deployments.controller';
 import { authenticate } from '../../middleware/authenticate';
+import { validate } from '../../middleware/validate';
+import { createDeploymentSchema } from './deployments.types';
 
 const router = Router();
 
 router.use(authenticate);
 
 // Nested under /environments/:environmentId/deployments
-router.post('/', createDeployment);
+router.post('/',validate(createDeploymentSchema), createDeployment);
 router.get('/', listDeployments);
 
 // Standalone deployment routes

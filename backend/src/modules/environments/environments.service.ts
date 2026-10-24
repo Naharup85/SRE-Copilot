@@ -19,43 +19,75 @@ export class EnvironmentsService {
     }
   }
 
-  async create(
-    userId: string,
-    applicationId: string,
-    input: CreateEnvironmentInput,
-  ): Promise<Environment> {
+  async create(userId: string, applicationId: string, input: CreateEnvironmentInput): Promise<Environment> {
     await this.verifyApplicationOwnership(userId, applicationId);
 
-    const [env] = await db
+    const [result] = await db
       .insert(environments)
       .values({ ...input, applicationId })
       .returning();
 
-    logger.info({ userId, applicationId, environmentId: env.id }, 'Environment created');
+    logger.info({ userId, applicationId, environmentId: result.id }, 'Environment created');
+
+    const env: Environment = {
+      id: result.id,
+      name: result.name,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      applicationId: result.applicationId,
+      clusterName: result.clusterName,
+      namespace: result.namespace,
+      deploymentName: result.deploymentName,
+      containerName: result.containerName,
+    };
     return env;
   }
 
   async listByApplication(userId: string, applicationId: string): Promise<Environment[]> {
     await this.verifyApplicationOwnership(userId, applicationId);
 
-    return db
+    const result = await db
       .select()
       .from(environments)
       .where(eq(environments.applicationId, applicationId))
       .orderBy(environments.createdAt);
+
+    return result.map((env: Environment) => {
+      return {
+        id: env.id,
+        name: env.name,
+        createdAt: env.createdAt,
+        updatedAt: env.updatedAt,
+        applicationId: env.applicationId,
+        clusterName: env.clusterName,
+        namespace: env.namespace,
+        deploymentName: env.deploymentName,
+        containerName: env.containerName,
+      };
+    });
   }
 
   async getById(userId: string, environmentId: string): Promise<Environment> {
-    const [env] = await db
+    const [result] = await db
       .select()
       .from(environments)
       .where(eq(environments.id, environmentId))
       .limit(1);
 
-    if (!env) {
+    if (!result) {
       throw new AppError('ENVIRONMENT_NOT_FOUND', 'Environment not found', 404);
     }
-
+    const env: Environment = {
+      id: result.id,
+      name: result.name,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      applicationId: result.applicationId,
+      clusterName: result.clusterName,
+      namespace: result.namespace,
+      deploymentName: result.deploymentName,
+      containerName: result.containerName,
+    };
     // Verify ownership through application
     await this.verifyApplicationOwnership(userId, env.applicationId);
 
@@ -69,14 +101,25 @@ export class EnvironmentsService {
   ): Promise<Environment> {
     await this.getById(userId, environmentId);
 
-    const [updated] = await db
+    const [result] = await db
       .update(environments)
       .set({ ...input, updatedAt: new Date() })
       .where(eq(environments.id, environmentId))
       .returning();
 
+    const env: Environment = {
+      id: result.id,
+      name: result.name,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      applicationId: result.applicationId,
+      clusterName: result.clusterName,
+      namespace: result.namespace,
+      deploymentName: result.deploymentName,
+      containerName: result.containerName,
+    };
     logger.info({ userId, environmentId }, 'Environment updated');
-    return updated;
+    return env;
   }
 
   async delete(userId: string, environmentId: string): Promise<void> {
