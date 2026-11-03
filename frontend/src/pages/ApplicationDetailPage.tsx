@@ -13,13 +13,19 @@ import {
   Loader2,
   Layers,
   Activity,
-  History
+  History,
+  Container,
+  Cpu,
+  ShieldCheck,
+  Terminal,
+  X,
+  Gauge
 } from 'lucide-react';
 import { applicationsApi, environmentsApi, deploymentsApi } from '../services/api';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { CreateEnvironmentModal } from '../components/forms/CreateEnvironmentModal';
 import { TriggerDeploymentModal } from '../components/forms/TriggerDeploymentModal';
-import type { Environment } from '../types';
+import type { Environment, ContainerLogEntry } from '../types';
 
 export function ApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +34,7 @@ export function ApplicationDetailPage() {
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
   const [deployTargetEnv, setDeployTargetEnv] = useState<Environment | null>(null);
   const [selectedEnvForHistory, setSelectedEnvForHistory] = useState<string | null>(null);
+  const [logsModalEnv, setLogsModalEnv] = useState<Environment | null>(null);
 
   // Fetch application details
   const { 
@@ -53,6 +60,18 @@ export function ApplicationDetailPage() {
 
   // Active environment selected for history (defaults to first env if available)
   const activeEnvId = selectedEnvForHistory || (environments.length > 0 ? environments[0].id : null);
+  const activeEnv = environments.find((e) => e.id === activeEnvId);
+
+  // Fetch live metrics for the active environment
+  const { 
+    data: metrics, 
+    isLoading: metricsLoading 
+  } = useQuery({
+    queryKey: ['environment-metrics', activeEnvId],
+    queryFn: () => (activeEnvId ? environmentsApi.getMetrics(activeEnvId) : Promise.resolve(null)),
+    enabled: !!activeEnvId,
+    refetchInterval: 5000,
+  });
 
   // Fetch deployments for the active environment
   const { 
@@ -64,6 +83,18 @@ export function ApplicationDetailPage() {
     queryFn: () => (activeEnvId ? deploymentsApi.list(activeEnvId) : Promise.resolve([])),
     enabled: !!activeEnvId,
     refetchInterval: 5000,
+  });
+
+  // Fetch container logs if modal is open
+  const { 
+    data: containerLogs = [], 
+    isLoading: containerLogsLoading,
+    refetch: refetchContainerLogs 
+  } = useQuery<ContainerLogEntry[]>({
+    queryKey: ['container-logs', logsModalEnv?.id],
+    queryFn: () => (logsModalEnv ? environmentsApi.getContainerLogs(logsModalEnv.id, 100) : Promise.resolve([])),
+    enabled: !!logsModalEnv,
+    refetchInterval: 3000,
   });
 
   const handleDeleteEnv = async (envId: string, envName: string) => {
@@ -79,16 +110,6 @@ export function ApplicationDetailPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
-        ' · ' + d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
-  };
-
   if (appLoading) {
     return (
       <div className="page loading-page">
@@ -101,9 +122,7 @@ export function ApplicationDetailPage() {
   if (appError || !app) {
     return (
       <div className="page">
-        <div className="alert alert-error">
-          Application not found or you do not have permission to access it.
-        </div>
+        <div className="alert alert-error">Application not found or access denied.</div>
       </div>
     );
   }
@@ -120,27 +139,25 @@ export function ApplicationDetailPage() {
             <span className="page-breadcrumb-sep">/</span>
             <span>{app.name}</span>
           </div>
-          <h1>{app.name}</h1>
-          <p>{app.description || 'Configured Git repository for continuous Kubernetes deployment'}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1>{app.name}</h1>
+          </div>
+          <p>{app.description || 'Configured Git repository and multi-runtime target deployment environments'}</p>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
             type="button" 
-            className="btn btn-primary"
+            className="btn btn-secondary btn-sm"
             onClick={() => setIsEnvModalOpen(true)}
           >
-            <Plus size={15} />
-            Add Environment
+            <Plus size={14} /> New Environment
           </button>
         </div>
       </div>
 
-      {/* App Git Info Card */}
+      {/* Meta Grid */}
       <div className="card mb-4">
-        <div className="card-header">
-          <h2 className="card-title">Repository & Git Source</h2>
-        </div>
         <div className="deployment-detail-grid" style={{ marginBottom: 0 }}>
           <div className="deployment-meta-card">
             <div className="deployment-meta-label">Git Repository</div>
@@ -173,8 +190,8 @@ export function ApplicationDetailPage() {
       <div className="card mb-4">
         <div className="card-header">
           <div>
-            <h2 className="card-title">Configured Kubernetes Environments</h2>
-            <p className="card-subtitle">Clusters, namespaces, and target deployment workloads</p>
+            <h2 className="card-title">Configured Deployment Environments</h2>
+            <p className="card-subtitle">Target workloads with independent SRE profiles & deployment runtimes</p>
           </div>
           <button 
             type="button" 
@@ -195,7 +212,7 @@ export function ApplicationDetailPage() {
             <Server className="empty-state-icon" />
             <div className="empty-state-title">No environments configured</div>
             <p className="empty-state-text">
-              Configure a Kubernetes target (e.g., Staging, Production) to trigger releases.
+              Configure a Docker Engine or Kubernetes target to trigger rollouts.
             </p>
             <button 
               type="button" 
@@ -207,70 +224,252 @@ export function ApplicationDetailPage() {
           </div>
         ) : (
           <div className="env-grid" style={{ marginTop: '0' }}>
-            {environments.map((env) => (
-              <div 
-                key={env.id} 
-                className={`env-card ${activeEnvId === env.id ? 'active' : ''}`}
-                style={activeEnvId === env.id ? { borderColor: 'var(--text-primary)' } : {}}
-              >
-                <div className="env-card-header">
-                  <span className="env-card-name">{env.name}</span>
-                  <button 
-                    type="button" 
-                    className="logout-btn"
-                    onClick={() => handleDeleteEnv(env.id, env.name)}
-                    title="Delete environment"
-                    aria-label="Delete environment"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+            {environments.map((env) => {
+              const isDocker = env.provider === 'docker';
+              const isStandard = env.sreProfile === 'standard';
+              const targetCfg = (env.targetConfig as any) || {};
 
-                <div className="env-card-meta">
-                  <div className="env-meta-row">
-                    <Server size={13} />
-                    <span>Cluster: </span>
-                    <span className="text-secondary">{env.clusterName}</span>
+              return (
+                <div 
+                  key={env.id} 
+                  className={`env-card ${activeEnvId === env.id ? 'active' : ''}`}
+                  style={activeEnvId === env.id ? { borderColor: 'var(--amber-text)', boxShadow: '0 0 0 1px var(--amber-text)' } : {}}
+                >
+                  <div className="env-card-header">
+                    <span className="env-card-name">{env.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button 
+                        type="button" 
+                        className="logout-btn"
+                        onClick={() => handleDeleteEnv(env.id, env.name)}
+                        title="Delete environment"
+                        aria-label="Delete environment"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="env-meta-row">
-                    <Box size={13} />
-                    <span>Namespace: </span>
-                    <span className="text-secondary">{env.namespace}</span>
-                  </div>
-                  <div className="env-meta-row">
-                    <Layers size={13} />
-                    <span>Deployment: </span>
-                    <span className="text-secondary">{env.deploymentName}</span>
-                  </div>
-                  <div className="env-meta-row">
-                    <Activity size={13} />
-                    <span>Container: </span>
-                    <span className="text-secondary">{env.containerName}</span>
-                  </div>
-                </div>
 
-                <div className="env-card-actions">
-                  <button 
-                    type="button" 
-                    className="btn btn-primary btn-sm w-full"
-                    onClick={() => setDeployTargetEnv(env)}
-                  >
-                    <Rocket size={13} /> Trigger Rollout
-                  </button>
-                  <button 
-                    type="button" 
-                    className={`btn ${activeEnvId === env.id ? 'btn-secondary' : 'btn-ghost'} btn-sm`}
-                    onClick={() => setSelectedEnvForHistory(env.id)}
-                    title="View deployment history for this environment"
-                  >
-                    <History size={13} />
-                  </button>
+                  {/* Badges: SRE Profile & Deployment Provider */}
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                    <span 
+                      style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontWeight: 500,
+                        backgroundColor: isStandard ? 'rgba(139, 92, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                        color: isStandard ? '#a78bfa' : '#fbbf24',
+                        border: `1px solid ${isStandard ? 'rgba(139, 92, 246, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                      }}
+                    >
+                      {isStandard ? <Cpu size={11} /> : <ShieldCheck size={11} />}
+                      {isStandard ? 'Standard SRE' : 'Basic SRE'}
+                    </span>
+
+                    <span 
+                      style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontWeight: 500,
+                        backgroundColor: isDocker ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                        color: isDocker ? '#60a5fa' : '#34d399',
+                        border: `1px solid ${isDocker ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                      }}
+                    >
+                      {isDocker ? <Container size={11} /> : <Server size={11} />}
+                      {isDocker ? 'Docker Engine' : 'Kubernetes'}
+                    </span>
+                  </div>
+
+                  {/* Target configuration details */}
+                  <div className="env-card-meta">
+                    {isDocker ? (
+                      <>
+                        <div className="env-meta-row">
+                          <Container size={13} />
+                          <span>Container: </span>
+                          <span className="text-secondary">{targetCfg.containerName || env.containerName || env.name}</span>
+                        </div>
+                        {targetCfg.portBindings && targetCfg.portBindings.length > 0 && (
+                          <div className="env-meta-row">
+                            <Activity size={13} />
+                            <span>Port Mapping: </span>
+                            <span className="text-secondary">
+                              {targetCfg.portBindings.map((pb: any) => `${pb.hostPort}:${pb.containerPort}`).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        <div className="env-meta-row">
+                          <Layers size={13} />
+                          <span>Network: </span>
+                          <span className="text-secondary">{targetCfg.network || 'bridge'}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="env-meta-row">
+                          <Server size={13} />
+                          <span>Cluster: </span>
+                          <span className="text-secondary">{env.clusterName || targetCfg.clusterName || 'default'}</span>
+                        </div>
+                        <div className="env-meta-row">
+                          <Box size={13} />
+                          <span>Namespace: </span>
+                          <span className="text-secondary">{env.namespace || targetCfg.namespace || 'default'}</span>
+                        </div>
+                        <div className="env-meta-row">
+                          <Layers size={13} />
+                          <span>Deployment: </span>
+                          <span className="text-secondary">{env.deploymentName || targetCfg.deploymentName}</span>
+                        </div>
+                        <div className="env-meta-row">
+                          <Activity size={13} />
+                          <span>Container: </span>
+                          <span className="text-secondary">{env.containerName || targetCfg.containerName}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="env-card-actions">
+                    <button 
+                      type="button" 
+                      className="btn btn-primary btn-sm w-full"
+                      onClick={() => setDeployTargetEnv(env)}
+                    >
+                      <Rocket size={13} /> Trigger Rollout
+                    </button>
+                    <button 
+                      type="button" 
+                      className={`btn ${activeEnvId === env.id ? 'btn-secondary' : 'btn-ghost'} btn-sm`}
+                      onClick={() => setSelectedEnvForHistory(env.id)}
+                      title="Select environment for telemetry and history"
+                    >
+                      <History size={13} />
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setLogsModalEnv(env)}
+                      title="Live container logs"
+                    >
+                      <Terminal size={13} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Active Environment Live Telemetry & Health Panel */}
+      {activeEnv && (
+        <div className="card mb-4">
+          <div className="card-header">
+            <div>
+              <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Gauge size={16} style={{ color: 'var(--amber-text)' }} />
+                Live Runtime Telemetry — {activeEnv.name} ({activeEnv.provider === 'docker' ? 'Docker Engine' : 'Kubernetes'})
+              </h2>
+              <p className="card-subtitle">Real-time health probe, uptime, CPU and memory telemetry</p>
+            </div>
+            <button 
+              type="button" 
+              className="btn btn-secondary btn-sm"
+              onClick={() => setLogsModalEnv(activeEnv)}
+            >
+              <Terminal size={13} /> Live Container Logs
+            </button>
+          </div>
+
+          {metricsLoading ? (
+            <div className="loading-page" style={{ padding: '16px' }}>
+              <Loader2 size={16} className="spinner" />
+              <span>Polling target runtime telemetry...</span>
+            </div>
+          ) : metrics ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+              <div className="deployment-meta-card">
+                <div className="deployment-meta-label">Runtime Status</div>
+                <div 
+                  className="deployment-meta-value"
+                  style={{
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    color: metrics.status === 'running' ? '#34d399' : metrics.status === 'degraded' ? '#fbbf24' : '#f87171',
+                  }}
+                >
+                  {metrics.status}
+                </div>
+              </div>
+
+              <div className="deployment-meta-card">
+                <div className="deployment-meta-label">Health Probe</div>
+                <div className="deployment-meta-value">
+                  {metrics.httpProbe ? (
+                    <span style={{ color: metrics.httpProbe.status === 'ok' ? '#34d399' : '#f87171' }}>
+                      {metrics.httpProbe.status === 'ok' ? `HTTP 200 (${metrics.httpProbe.latencyMs}ms)` : 'Probe Failed'}
+                    </span>
+                  ) : metrics.healthStatus !== 'none' ? (
+                    <span style={{ textTransform: 'capitalize' }}>{metrics.healthStatus}</span>
+                  ) : (
+                    <span className="text-secondary">Self-Reported Ready</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="deployment-meta-card">
+                <div className="deployment-meta-label">Uptime</div>
+                <div className="deployment-meta-value">
+                  {metrics.uptimeSeconds > 3600
+                    ? `${(metrics.uptimeSeconds / 3600).toFixed(1)} hrs`
+                    : metrics.uptimeSeconds > 60
+                    ? `${Math.floor(metrics.uptimeSeconds / 60)} min`
+                    : `${metrics.uptimeSeconds} sec`}
+                </div>
+              </div>
+
+              {activeEnv.provider === 'docker' && (
+                <>
+                  <div className="deployment-meta-card">
+                    <div className="deployment-meta-label">CPU Usage</div>
+                    <div className="deployment-meta-value">
+                      {metrics.cpuPercent.toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div className="deployment-meta-card">
+                    <div className="deployment-meta-label">Memory Usage</div>
+                    <div className="deployment-meta-value">
+                      {(metrics.memoryUsageBytes / (1024 * 1024)).toFixed(1)} MB ({metrics.memoryPercent.toFixed(1)}%)
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="deployment-meta-card">
+                <div className="deployment-meta-label">Restarts</div>
+                <div className="deployment-meta-value">
+                  {metrics.restartCount}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: 'var(--text-secondary)', padding: '12px' }}>
+              Telemetry unavailable for current target.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Deployment History for selected environment */}
       {environments.length > 0 && (
@@ -298,63 +497,67 @@ export function ApplicationDetailPage() {
 
           {depsLoading ? (
             <div className="loading-page" style={{ padding: '32px' }}>
-              <Loader2 size={20} className="spinner" />
-              <span>Fetching deployment history...</span>
+              <Loader2 size={18} className="spinner" />
+              <span>Loading deployment records...</span>
             </div>
           ) : deployments.length === 0 ? (
-            <div className="empty-state">
-              <Rocket className="empty-state-icon" />
-              <div className="empty-state-title">No deployments in this environment</div>
+            <div className="empty-state" style={{ padding: '32px' }}>
+              <History className="empty-state-icon" />
+              <div className="empty-state-title">No deployments recorded</div>
               <p className="empty-state-text">
-                Trigger your first deployment to build manifests and roll out to Kubernetes.
+                Trigger a rollout above to deploy this application to the {environments.find((e) => e.id === activeEnvId)?.name} environment.
               </p>
             </div>
           ) : (
-            <div className="table-wrapper">
-              <table>
+            <div className="table-container">
+              <table className="table">
                 <thead>
                   <tr>
+                    <th>Version</th>
+                    <th>Commit</th>
                     <th>Status</th>
-                    <th>Release Version</th>
-                    <th>Commit SHA</th>
                     <th>Started</th>
-                    <th>Completed</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th>Duration</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {deployments.map((dep) => (
-                    <tr key={dep.id}>
-                      <td>
-                        <StatusBadge status={dep.status} />
-                      </td>
-                      <td>
-                        <span className="td-mono td-primary">{dep.version}</span>
-                      </td>
-                      <td>
-                        <span className="td-mono text-muted">{dep.commitSha.slice(0, 7)}</span>
-                      </td>
-                      <td>
-                        <span className="text-sm text-muted">
-                          {dep.startedAt ? formatDate(dep.startedAt) : 'Pending'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="text-sm text-muted">
-                          {dep.finishedAt ? formatDate(dep.finishedAt) : dep.status === 'RUNNING' ? 'In Progress...' : '-'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Link 
-                          to={`/deployments/${dep.id}`} 
-                          className="btn btn-secondary btn-sm"
-                        >
-                          <ExternalLink size={12} />
-                          View Logs
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  {deployments.map((dep) => {
+                    const started = dep.startedAt ? new Date(dep.startedAt) : null;
+                    const finished = dep.finishedAt ? new Date(dep.finishedAt) : null;
+                    const durationSec = started && finished 
+                      ? Math.round((finished.getTime() - started.getTime()) / 1000) 
+                      : null;
+
+                    return (
+                      <tr key={dep.id}>
+                        <td>
+                          <Link to={`/deployments/${dep.id}`} className="td-link font-medium">
+                            {dep.version}
+                          </Link>
+                        </td>
+                        <td>
+                          <span className="td-mono text-secondary">
+                            {dep.commitSha.slice(0, 7)}
+                          </span>
+                        </td>
+                        <td>
+                          <StatusBadge status={dep.status} />
+                        </td>
+                        <td className="text-secondary">
+                          {started ? started.toLocaleString() : '—'}
+                        </td>
+                        <td className="text-secondary">
+                          {durationSec !== null ? `${durationSec}s` : dep.status === 'RUNNING' ? 'Running...' : '—'}
+                        </td>
+                        <td>
+                          <Link to={`/deployments/${dep.id}`} className="btn btn-ghost btn-sm">
+                            View Logs
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -362,21 +565,112 @@ export function ApplicationDetailPage() {
         </div>
       )}
 
-      {/* Modals */}
-      <CreateEnvironmentModal 
+      {/* Live Container Logs Modal */}
+      {logsModalEnv && (
+        <div className="modal-overlay" onClick={() => setLogsModalEnv(null)}>
+          <div className="modal" style={{ maxWidth: '800px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Terminal size={16} />
+                  Container Live Logs — {logsModalEnv.name}
+                </h2>
+                <p className="modal-subtitle">
+                  Streaming logs from {logsModalEnv.provider === 'docker' ? 'Docker container' : 'Kubernetes pod'}
+                </p>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close" 
+                onClick={() => setLogsModalEnv(null)} 
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {containerLogsLoading && containerLogs.length === 0 ? (
+                <div className="loading-page" style={{ padding: '24px' }}>
+                  <Loader2 size={18} className="spinner" />
+                  <span>Fetching runtime logs...</span>
+                </div>
+              ) : containerLogs.length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', padding: '24px', textAlign: 'center' }}>
+                  No container log entries found.
+                </div>
+              ) : (
+                <div 
+                  style={{
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '6px',
+                    padding: '12px',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {containerLogs.map((log, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '10px' }}>
+                      <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>
+                        {new Date(log.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span style={{ color: log.stream === 'stderr' ? '#f87171' : 'var(--text-primary)' }}>
+                        {log.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn btn-secondary btn-sm"
+                onClick={() => refetchContainerLogs()}
+              >
+                Refresh
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary btn-sm"
+                onClick={() => setLogsModalEnv(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trigger Deployment Modal */}
+      {deployTargetEnv && (
+        <TriggerDeploymentModal
+          isOpen={!!deployTargetEnv}
+          environment={deployTargetEnv}
+          applicationName={app.name}
+          onClose={() => setDeployTargetEnv(null)}
+          onTriggered={() => {
+            refetchDeps();
+            setDeployTargetEnv(null);
+          }}
+        />
+      )}
+
+      {/* Create Environment Modal */}
+      <CreateEnvironmentModal
         isOpen={isEnvModalOpen}
         applicationId={appId}
         applicationName={app.name}
         onClose={() => setIsEnvModalOpen(false)}
-        onCreated={() => refetchEnvs()}
-      />
-
-      <TriggerDeploymentModal 
-        isOpen={!!deployTargetEnv}
-        environment={deployTargetEnv}
-        applicationName={app.name}
-        onClose={() => setDeployTargetEnv(null)}
-        onTriggered={() => refetchDeps()}
+        onCreated={() => {
+          refetchEnvs();
+          setIsEnvModalOpen(false);
+        }}
       />
     </div>
   );

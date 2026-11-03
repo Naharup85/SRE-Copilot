@@ -1,7 +1,7 @@
 import { db } from '../db/connection';
 import { deployments } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { deploymentProvider } from './deployment-provider.factory';
+import { resolveDeploymentProvider } from './deployment-provider.resolver';
 import { DatabaseLogEmitter } from './log-emitter';
 import { logger } from '../config/logger';
 import type { Application, Environment, Deployment } from '../db/schema';
@@ -34,7 +34,8 @@ export class DeploymentWorker {
         .set({ status: 'RUNNING', startedAt: new Date() })
         .where(eq(deployments.id, deploymentId));
 
-      const result = await deploymentProvider.deploy({
+      const provider = resolveDeploymentProvider(environment);
+      const result = await provider.deploy({
         deploymentId,
         application,
         environment,

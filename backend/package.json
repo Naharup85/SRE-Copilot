@@ -23,6 +23,7 @@
     "argon2": "^0.31.2",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
+    "dockerode": "^5.0.1",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "express": "^4.21.2",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
+    "@types/dockerode": "^4.0.2",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.7",
@@ -53,9 +55,18 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "roots": ["<rootDir>/src"],
-    "testMatch": ["**/__tests__/**/*.test.ts"],
-    "collectCoverageFrom": ["src/**/*.ts", "!src/**/*.d.ts"],
-    "setupFilesAfterEnv": ["<rootDir>/src/__tests__/setup.ts"]
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/__tests__/setup.ts"
+    ]
   }
 }

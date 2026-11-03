@@ -1,5 +1,8 @@
 // Shared API types for the frontend
 
+export type SreProfile = 'basic' | 'standard';
+export type DeploymentProviderType = 'docker' | 'kubernetes';
+
 export interface User {
   id: string;
   email: string;
@@ -25,16 +28,65 @@ export interface Application {
   updatedAt: string;
 }
 
+export interface DockerTargetConfig {
+  containerName?: string;
+  network?: string;
+  portBindings?: Array<{ hostPort: number; containerPort: number }>;
+  secretRefs?: Record<string, string>;
+  envVars?: Record<string, string>;
+  healthCheck?: {
+    path?: string;
+    port?: number;
+    intervalSeconds?: number;
+    timeoutSeconds?: number;
+    retries?: number;
+  };
+}
+
+export interface KubernetesTargetConfig {
+  clusterName?: string;
+  namespace?: string;
+  deploymentName?: string;
+  containerName?: string;
+}
+
 export interface Environment {
   id: string;
   applicationId: string;
   name: string;
-  clusterName: string;
-  namespace: string;
-  deploymentName: string;
-  containerName: string;
+  sreProfile: SreProfile;
+  provider: DeploymentProviderType;
+  targetConfig?: DockerTargetConfig | KubernetesTargetConfig | Record<string, any>;
+  clusterName?: string | null;
+  namespace?: string | null;
+  deploymentName?: string | null;
+  containerName?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EnvironmentMetrics {
+  status: 'running' | 'stopped' | 'degraded' | 'unknown';
+  uptimeSeconds: number;
+  cpuPercent: number;
+  memoryUsageBytes: number;
+  memoryLimitBytes: number;
+  memoryPercent: number;
+  restartCount: number;
+  healthStatus: 'healthy' | 'unhealthy' | 'starting' | 'none';
+  httpProbe?: {
+    status: 'ok' | 'failed' | 'skipped';
+    statusCode?: number;
+    latencyMs?: number;
+    message?: string;
+  };
+  collectedAt: string;
+}
+
+export interface ContainerLogEntry {
+  timestamp: string;
+  stream: 'stdout' | 'stderr';
+  message: string;
 }
 
 export type DeploymentStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';

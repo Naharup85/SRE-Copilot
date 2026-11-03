@@ -22,49 +22,59 @@ export class EnvironmentsService {
   async create(userId: string, applicationId: string, input: CreateEnvironmentInput): Promise<Environment> {
     await this.verifyApplicationOwnership(userId, applicationId);
 
+    const provider = input.provider || 'kubernetes';
+    const sreProfile = input.sreProfile || 'basic';
+
+    // Normalize targetConfig
+    let targetConfig = input.targetConfig || {};
+    if (provider === 'kubernetes') {
+      targetConfig = {
+        clusterName: input.clusterName || targetConfig.clusterName || 'default',
+        namespace: input.namespace || targetConfig.namespace || 'default',
+        deploymentName: input.deploymentName || targetConfig.deploymentName,
+        containerName: input.containerName || targetConfig.containerName,
+        ...targetConfig,
+      };
+    } else if (provider === 'docker') {
+      targetConfig = {
+        containerName: input.containerName || targetConfig.containerName,
+        network: targetConfig.network || 'bridge',
+        portBindings: targetConfig.portBindings || [],
+        secretRefs: targetConfig.secretRefs || {},
+        envVars: targetConfig.envVars || {},
+        healthCheck: targetConfig.healthCheck,
+        ...targetConfig,
+      };
+    }
+
     const [result] = await db
       .insert(environments)
-      .values({ ...input, applicationId })
+      .values({
+        applicationId,
+        name: input.name,
+        sreProfile,
+        provider,
+        targetConfig,
+        clusterName: input.clusterName || targetConfig.clusterName || null,
+        namespace: input.namespace || targetConfig.namespace || null,
+        deploymentName: input.deploymentName || targetConfig.deploymentName || null,
+        containerName: input.containerName || targetConfig.containerName || null,
+      })
       .returning();
 
-    logger.info({ userId, applicationId, environmentId: result.id }, 'Environment created');
+    logger.info({ userId, applicationId, environmentId: result.id, provider, sreProfile }, 'Environment created');
 
-    const env: Environment = {
-      id: result.id,
-      name: result.name,
-      createdAt: result.createdAt,
-      updatedAt: result.updatedAt,
-      applicationId: result.applicationId,
-      clusterName: result.clusterName,
-      namespace: result.namespace,
-      deploymentName: result.deploymentName,
-      containerName: result.containerName,
-    };
-    return env;
+    return result;
   }
 
   async listByApplication(userId: string, applicationId: string): Promise<Environment[]> {
     await this.verifyApplicationOwnership(userId, applicationId);
 
-    const result = await db
+    return db
       .select()
       .from(environments)
       .where(eq(environments.applicationId, applicationId))
       .orderBy(environments.createdAt);
-
-    return result.map((env: Environment) => {
-      return {
-        id: env.id,
-        name: env.name,
-        createdAt: env.createdAt,
-        updatedAt: env.updatedAt,
-        applicationId: env.applicationId,
-        clusterName: env.clusterName,
-        namespace: env.namespace,
-        deploymentName: env.deploymentName,
-        containerName: env.containerName,
-      };
-    });
   }
 
   async getById(userId: string, environmentId: string): Promise<Environment> {
@@ -77,21 +87,11 @@ export class EnvironmentsService {
     if (!result) {
       throw new AppError('ENVIRONMENT_NOT_FOUND', 'Environment not found', 404);
     }
-    const env: Environment = {
-      id: result.id,
-      name: result.name,
-      createdAt: result.createdAt,
-      updatedAt: result.updatedAt,
-      applicationId: result.applicationId,
-      clusterName: result.clusterName,
-      namespace: result.namespace,
-      deploymentName: result.deploymentName,
-      containerName: result.containerName,
-    };
-    // Verify ownership through application
-    await this.verifyApplicationOwnership(userId, env.applicationId);
 
-    return env;
+    // Verify ownership through application
+    await this.verifyApplicationOwnership(userId, result.applicationId);
+
+    return result;
   }
 
   async update(
@@ -99,27 +99,26 @@ export class EnvironmentsService {
     environmentId: string,
     input: UpdateEnvironmentInput,
   ): Promise<Environment> {
-    await this.getById(userId, environmentId);
+    const current = await this.getById(userId, environmentId);
+
+    let targetConfig = input.targetConfig || current.targetConfig || {};
+
+    if (input.targetConfig) {
+      targetConfig = { ...current.targetConfig, ...input.targetConfig };
+    }
 
     const [result] = await db
       .update(environments)
-      .set({ ...input, updatedAt: new Date() })
+      .set({
+        ...input,
+        targetConfig,
+        updatedAt: new Date(),
+      })
       .where(eq(environments.id, environmentId))
       .returning();
 
-    const env: Environment = {
-      id: result.id,
-      name: result.name,
-      createdAt: result.createdAt,
-      updatedAt: result.updatedAt,
-      applicationId: result.applicationId,
-      clusterName: result.clusterName,
-      namespace: result.namespace,
-      deploymentName: result.deploymentName,
-      containerName: result.containerName,
-    };
     logger.info({ userId, environmentId }, 'Environment updated');
-    return env;
+    return result;
   }
 
   async delete(userId: string, environmentId: string): Promise<void> {

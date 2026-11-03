@@ -37,10 +37,20 @@ export class KubernetesDeploymentProvider implements DeploymentProvider {
 
   async deploy(input: DeploymentInput): Promise<DeploymentResult> {
     const { deploymentId, application, environment, version } = input;
-    const { namespace, deploymentName, containerName, clusterName } = environment;
+    const cfg = (environment.targetConfig as any) || {};
+    const namespace: string = environment.namespace || cfg.namespace || 'default';
+    const deploymentName: string | null = environment.deploymentName || cfg.deploymentName || null;
+    const containerName: string = environment.containerName || cfg.containerName || '';
+    const clusterName: string = environment.clusterName || cfg.clusterName || 'default';
 
     const log = (level: 'INFO' | 'WARN' | 'ERROR', message: string) =>
       this.logEmitter.emit(deploymentId, level, message);
+
+    if (!deploymentName) {
+      const message = 'Deployment name is not configured in environment or targetConfig';
+      await log('ERROR', message);
+      return { success: false, error: message };
+    }
 
     const imageTag = version.includes('/')
       ? version

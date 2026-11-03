@@ -119,12 +119,39 @@ export function DeploymentDetailPage() {
     return `${mins}m ${secs}s`;
   };
 
-  // Determine stage progress from log messages
-  const hasStep1 = logs.some((l) => l.message.includes('Deployment started'));
-  const hasStep2 = logs.some((l) => l.message.includes('Fetching deployment'));
-  const hasStep3 = logs.some((l) => l.message.includes('image to:'));
-  const hasStep4 = logs.some((l) => l.message.includes('Applying deployment'));
-  const hasStep5 = logs.some((l) => l.message.includes('Rollout completed'));
+  // Determine stage progress from log messages (works for Docker & Kubernetes)
+  const hasStep1 = logs.some(
+    (l) =>
+      l.message.includes('Deployment started') ||
+      l.message.includes('Initializing Docker deployment') ||
+      l.message.includes('Starting Docker deployment'),
+  );
+  const hasStep2 = logs.some(
+    (l) =>
+      l.message.includes('Fetching deployment') ||
+      l.message.includes('Pulling container image') ||
+      l.message.includes('Successfully pulled image'),
+  );
+  const hasStep3 = logs.some(
+    (l) =>
+      l.message.includes('image to:') ||
+      l.message.includes('Injected secret') ||
+      l.message.includes('Configured port') ||
+      l.message.includes('previous container'),
+  );
+  const hasStep4 = logs.some(
+    (l) =>
+      l.message.includes('Applying deployment') ||
+      l.message.includes('Creating container') ||
+      l.message.includes('Starting container') ||
+      l.message.includes('Verifying container readiness'),
+  );
+  const hasStep5 = logs.some(
+    (l) =>
+      l.message.includes('Rollout completed') ||
+      l.message.includes('Docker deployment completed') ||
+      l.message.includes('Deployment completed successfully'),
+  );
   const isFailed = deployment?.status === 'FAILED';
   const isSuccess = deployment?.status === 'SUCCESS' || hasStep5;
 
@@ -224,7 +251,7 @@ export function DeploymentDetailPage() {
       <div className="card mb-4">
         <div className="card-header">
           <h2 className="card-title">Rollout Progression Stages</h2>
-          <span className="text-sm text-muted">Kubernetes deployment pipeline lifecycle</span>
+          <span className="text-sm text-muted">Runtime deployment and container lifecycle pipeline</span>
         </div>
 
         <div className="timeline">
@@ -250,10 +277,10 @@ export function DeploymentDetailPage() {
             </div>
             <div className="timeline-content">
               <div className={`timeline-label ${hasStep2 ? 'done' : hasStep1 ? 'active' : ''}`}>
-                Target Workload Resolution
+                Runtime Target & Image Resolution
               </div>
               <div className="timeline-time">
-                {hasStep2 ? 'Located Kubernetes deployment and namespace target' : 'Pending cluster sync'}
+                {hasStep2 ? 'Image pulled and target runtime resolved' : 'Pending runtime sync'}
               </div>
             </div>
           </div>
@@ -265,10 +292,10 @@ export function DeploymentDetailPage() {
             </div>
             <div className="timeline-content">
               <div className={`timeline-label ${hasStep3 ? 'done' : hasStep2 ? 'active' : ''}`}>
-                Image Tag & Container Patching
+                Configuration & Spec Preparation
               </div>
               <div className="timeline-time">
-                {hasStep3 ? `Applied release image tag ${deployment.version}` : 'Pending patch'}
+                {hasStep3 ? `Prepared container spec and configuration for ${deployment.version}` : 'Pending configuration'}
               </div>
             </div>
           </div>
@@ -280,10 +307,10 @@ export function DeploymentDetailPage() {
             </div>
             <div className="timeline-content">
               <div className={`timeline-label ${hasStep4 ? 'done' : hasStep3 ? 'active' : ''}`}>
-                Kubernetes Pod Rollout & Health Check
+                Workload Rollout & Readiness Verification
               </div>
               <div className="timeline-time">
-                {hasStep4 ? 'Triggered rolling update across replicas' : 'Pending replica rotation'}
+                {hasStep4 ? 'Triggered update and verified health probes' : 'Pending health verification'}
               </div>
             </div>
           </div>
@@ -299,7 +326,7 @@ export function DeploymentDetailPage() {
               </div>
               <div className="timeline-time">
                 {isSuccess
-                  ? 'All pods healthy and serving production traffic'
+                  ? 'All containers and replicas healthy and serving traffic'
                   : isFailed
                   ? 'Rollout failed or terminated with error'
                   : 'Awaiting container readiness probes'}

@@ -1,22 +1,13 @@
-import { env } from '../config/env';
 import type { DeploymentProvider } from './deployment-provider.interface';
-import { MockDeploymentProvider } from './mock-deployment.provider';
-import { KubernetesDeploymentProvider } from './kubernetes-deployment.provider';
-import { logger } from '../config/logger';
+import { resolveDeploymentProvider } from './deployment-provider.resolver';
 
 /**
- * Factory that selects the correct deployment provider based on env configuration.
- * Swap DEPLOYMENT_PROVIDER=kubernetes in production to use the real provider.
+ * Legacy factory kept for backwards compatibility.
+ * Prefer using resolveDeploymentProvider(environment) for dynamic per-environment resolution.
  */
 export function createDeploymentProvider(): DeploymentProvider {
-  if (env.DEPLOYMENT_PROVIDER === 'kubernetes') {
-    logger.info('Using KubernetesDeploymentProvider');
-    return new KubernetesDeploymentProvider();
-  }
-
-  logger.info('Using MockDeploymentProvider (set DEPLOYMENT_PROVIDER=kubernetes for real deployments)');
-  return new MockDeploymentProvider();
+  return resolveDeploymentProvider();
 }
 
-// Singleton instance
+// Default singleton instance
 export const deploymentProvider = createDeploymentProvider();

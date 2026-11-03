@@ -1,0 +1,26 @@
+import type { Environment } from '../db/schema';
+
+export interface HttpProbeResult {
+  status: 'ok' | 'failed' | 'skipped';
+  statusCode?: number;
+  latencyMs?: number;
+  message?: string;
+}
+
+export interface EnvironmentMetrics {
+  status: 'running' | 'stopped' | 'degraded' | 'unknown';
+  uptimeSeconds: number;
+  cpuPercent: number;
+  memoryUsageBytes: number;
+  memoryLimitBytes: number;
+  memoryPercent: number;
+  restartCount: number;
+  healthStatus: 'healthy' | 'unhealthy' | 'starting' | 'none';
+  httpProbe?: HttpProbeResult;
+  collectedAt: string;
+}
+
+export interface MonitoringProvider {
+  getMetrics(environment: Environment): Promise<EnvironmentMetrics>;
+}
+

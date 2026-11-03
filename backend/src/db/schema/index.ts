@@ -4,8 +4,13 @@ export type { User, NewUser } from './users';
 export { applications, applicationsRelations } from './applications';
 export type { Application, NewApplication } from './applications';
 
-export { environments, environmentsRelations } from './environments';
-export type { Environment, NewEnvironment } from './environments';
+export {
+  environments,
+  environmentsRelations,
+  sreProfileEnum,
+  deploymentProviderEnum,
+} from './environments';
+export type { Environment, NewEnvironment, SreProfile, DeploymentProviderType } from './environments';
 
 export {
   deployments,

@@ -25,17 +25,7 @@ export class DeploymentsService {
       throw new AppError('ENVIRONMENT_NOT_FOUND', 'Environment not found', 404);
     }
 
-    const environment: Environment = {
-        id: result.env.id,
-        name: result.env.name,
-        createdAt: result.env.createdAt,
-        updatedAt: result.env.updatedAt,
-        applicationId: result.env.applicationId,
-        clusterName: result.env.clusterName,
-        namespace: result.env.namespace,
-        deploymentName: result.env.deploymentName,
-        containerName: result.env.containerName,
-    };
+    const environment: Environment = result.env;
     
     const application: Application = {
         id: result.app.id,

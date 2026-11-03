@@ -16,7 +16,7 @@ const envSchema = z.object({
   KUBERNETES_NAMESPACE: z.string().optional(),
   KUBERNETES_ROLLOUT_TIMEOUT_MS: z.coerce.number().default(45000),
   KUBERNETES_POLL_INTERVAL_MS: z.coerce.number().default(2000),
-  DEPLOYMENT_PROVIDER: z.enum(['mock', 'kubernetes']).default('mock'),
+  DEPLOYMENT_PROVIDER: z.enum(['mock', 'kubernetes', 'docker', 'dynamic']).default('dynamic'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

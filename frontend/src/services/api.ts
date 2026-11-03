@@ -6,6 +6,8 @@ import type {
   Deployment,
   DeploymentLog,
   DashboardStats,
+  EnvironmentMetrics,
+  ContainerLogEntry,
 } from '../types';
 
 // ─── Auth ─────────────────────────────────────────────────
@@ -77,6 +79,16 @@ export const environmentsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/environments/${id}`);
+  },
+
+  getMetrics: async (id: string): Promise<EnvironmentMetrics> => {
+    const res = await apiClient.get(`/environments/${id}/metrics`);
+    return res.data.data;
+  },
+
+  getContainerLogs: async (id: string, lines = 100): Promise<ContainerLogEntry[]> => {
+    const res = await apiClient.get(`/environments/${id}/container-logs?lines=${lines}`);
+    return res.data.data;
   },
 };
 
