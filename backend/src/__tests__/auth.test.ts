@@ -1,8 +1,9 @@
 import request from 'supertest';
-import app from '../index';
+import { createApplication } from '../app';
 import { cleanDb } from './setup';
 import { pool } from '../db/connection';
 
+const app = createApplication();
 const api = request(app);
 
 describe('Authentication', () => {
@@ -26,8 +27,8 @@ describe('Authentication', () => {
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.data.token).toBeDefined();
-      expect(res.body.data.user.email).toBe('test@example.com');
-      expect(res.body.data.user.passwordHash).toBeUndefined();
+      expect(res.body.data.email).toBe('test@example.com');
+      expect(res.body.data.passwordHash).toBeUndefined();
     });
 
     it('should reject duplicate email', async () => {

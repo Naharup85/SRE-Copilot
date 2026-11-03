@@ -28,19 +28,29 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(input.password);
 
-    const [result] = await db
-      .insert(users)
-      .values({
-        email: input.email,
-        passwordHash,
-        name: input.name,
-      })
-      .returning({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        createdAt: users.createdAt,
-      });
+    let result: { id: string; email: string; name: string; createdAt: Date };
+    try {
+      const [row] = await db
+        .insert(users)
+        .values({
+          email: input.email,
+          passwordHash,
+          name: input.name,
+        })
+        .returning({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          createdAt: users.createdAt,
+        });
+      result = row;
+    } catch (err: any) {
+      // PostgreSQL unique violation code
+      if (err?.code === '23505') {
+        throw new AppError('EMAIL_ALREADY_EXISTS', 'An account with this email already exists', 409);
+      }
+      throw err;
+    }
 
     const user = {
       id: result.id,

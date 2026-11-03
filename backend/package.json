@@ -12,8 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
-    "test": "jest --forceExit",
-    "test:watch": "jest --watch",
+    "test": "jest --forceExit --runInBand",
+    "test:watch": "jest --watch --runInBand",
     "test:coverage": "jest --coverage --forceExit",
     "lint": "eslint src --ext .ts"
   },

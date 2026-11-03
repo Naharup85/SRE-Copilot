@@ -23,10 +23,10 @@ export class ApplicationsService {
       createdBy: result.createdBy,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
-      repositoryUrl: '',
-      repositoryOwner: '',
-      repositoryName: '',
-      defaultBranch: ''
+      repositoryUrl: result.repositoryUrl,
+      repositoryOwner: result.repositoryOwner,
+      repositoryName: result.repositoryName,
+      defaultBranch: result.defaultBranch,
     };
     logger.info({ userId, applicationId: app.id }, 'Application created');
     return app;
@@ -47,10 +47,10 @@ export class ApplicationsService {
         createdBy: app.createdBy,
         createdAt: app.createdAt,
         updatedAt: app.updatedAt,
-        repositoryUrl: '',
-        repositoryOwner: '',
-        repositoryName: '',
-        defaultBranch: ''
+        repositoryUrl: app.repositoryUrl,
+        repositoryOwner: app.repositoryOwner,
+        repositoryName: app.repositoryName,
+        defaultBranch: app.defaultBranch,
       };
     });
   }
@@ -75,10 +75,10 @@ export class ApplicationsService {
       createdBy: result.createdBy,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
-      repositoryUrl: '',
-      repositoryOwner: '',
-      repositoryName: '',
-      defaultBranch: ''
+      repositoryUrl: result.repositoryUrl,
+      repositoryOwner: result.repositoryOwner,
+      repositoryName: result.repositoryName,
+      defaultBranch: result.defaultBranch,
     };
 
     return app;
@@ -106,10 +106,10 @@ export class ApplicationsService {
       createdBy: result.createdBy,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
-      repositoryUrl: '',
-      repositoryOwner: '',
-      repositoryName: '',
-      defaultBranch: ''
+      repositoryUrl: result.repositoryUrl,
+      repositoryOwner: result.repositoryOwner,
+      repositoryName: result.repositoryName,
+      defaultBranch: result.defaultBranch,
     };
     return updated;
   }

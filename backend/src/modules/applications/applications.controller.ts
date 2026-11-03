@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { applicationsService } from './applications.service';
-import { updateApplicationSchema } from './applications.types';
-import { validate, validateUuid } from '../../utils/validate';
+import { validateUuid } from '../../utils/validate';
 import { sendCreated, sendSuccess } from '../../utils/response';
 
 export const createApplication = async (req: Request, res: Response, next: NextFunction): Promise<void> => {

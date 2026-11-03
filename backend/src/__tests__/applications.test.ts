@@ -1,8 +1,9 @@
 import request from 'supertest';
-import app from '../index';
+import { createApplication } from '../app';
 import { cleanDb } from './setup';
 import { pool } from '../db/connection';
 
+const app = createApplication();
 const api = request(app);
 
 async function createUserAndToken(
