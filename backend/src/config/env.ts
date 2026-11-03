@@ -14,6 +14,8 @@ const envSchema = z.object({
   GITHUB_TOKEN: z.string().optional(),
   KUBERNETES_CONTEXT: z.string().optional(),
   KUBERNETES_NAMESPACE: z.string().optional(),
+  KUBERNETES_ROLLOUT_TIMEOUT_MS: z.coerce.number().default(45000),
+  KUBERNETES_POLL_INTERVAL_MS: z.coerce.number().default(2000),
   DEPLOYMENT_PROVIDER: z.enum(['mock', 'kubernetes']).default('mock'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
