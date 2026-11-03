@@ -11,7 +11,7 @@ import { validate } from '../../middleware/validate';
 import { createEnvironmentSchema } from './environments.types';
 import { updateEnvironmentSchema } from './environments.types';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.use(authenticate);
 

@@ -23,15 +23,8 @@ services:
       dockerfile: Dockerfile
     container_name: sre-copilot-backend
     restart: unless-stopped
-    environment:
-      PORT: 3001
-      NODE_ENV: production
-      DATABASE_URL: postgresql://sre_user:sre_password@postgres:5432/sre_copilot
-      JWT_SECRET: super-secret-production-key-sre-copilot-2026-min-32-chars
-      JWT_EXPIRES_IN: 7d
-      DEPLOYMENT_PROVIDER: mock
-      CORS_ORIGIN: http://localhost:8080,http://localhost:5173
-      LOG_LEVEL: info
+    env_file:
+      - ./backend/.env.production
     ports:
       - "3001:3001"
     depends_on:

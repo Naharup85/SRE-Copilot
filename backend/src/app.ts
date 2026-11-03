@@ -48,10 +48,7 @@ export function createApplication() {
 
     app.use(`${API_PREFIX}/auth`, authRouter);
     app.use(`${API_PREFIX}/applications`, applicationsRouter);
-    app.use(`${API_PREFIX}/applications/:applicationId/environments`, (_req, _res, next) => {
-    // Pass applicationId to the router
-    next();
-    }, environmentsRouter);
+    app.use(`${API_PREFIX}/applications/:applicationId/environments`, environmentsRouter);
     app.use(`${API_PREFIX}/environments`, environmentStandaloneRouter);
     app.use(`${API_PREFIX}/environments/:environmentId/deployments`, deploymentsRouter);
     app.use(`${API_PREFIX}/deployments`, deploymentStandaloneRouter);

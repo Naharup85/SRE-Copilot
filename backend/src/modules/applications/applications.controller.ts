@@ -36,8 +36,7 @@ export const getApplication = async (req: Request, res: Response, next: NextFunc
 export const updateApplication = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     validateUuid(req.params.id, 'applicationId');
-    const input = validate(updateApplicationSchema, req.body);
-    const app = await applicationsService.update(req.user!.id, req.params.id, input);
+    const app = await applicationsService.update(req.user!.id, req.params.id, req.body);
     sendSuccess(res, app);
   } catch (error) {
     next(error);

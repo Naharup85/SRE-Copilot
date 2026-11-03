@@ -11,7 +11,7 @@ import { authenticate } from '../../middleware/authenticate';
 import { validate } from '../../middleware/validate';
 import { createDeploymentSchema } from './deployments.types';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.use(authenticate);
 
