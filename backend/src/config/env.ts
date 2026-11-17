@@ -17,6 +17,10 @@ const envSchema = z.object({
   KUBERNETES_ROLLOUT_TIMEOUT_MS: z.coerce.number().default(45000),
   KUBERNETES_POLL_INTERVAL_MS: z.coerce.number().default(2000),
   DEPLOYMENT_PROVIDER: z.enum(['mock', 'kubernetes', 'docker', 'dynamic']).default('dynamic'),
+  PROMETHEUS_ENABLED: z.coerce.boolean().default(true),
+  PROMETHEUS_URL: z.string().default('http://localhost:9090'),
+  PROMETHEUS_SCRAPE_INTERVAL: z.string().default('15s'),
+  PROMETHEUS_RETENTION_TIME: z.string().default('7d'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

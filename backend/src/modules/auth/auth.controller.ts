@@ -28,7 +28,7 @@ const login = async (req: Request, res: Response, next: NextFunction): Promise<v
     const { accessToken, refreshToken, user } = await authService.login(input);
     res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
     res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    sendSuccess(res, { ...user, token: accessToken });
+    sendSuccess(res, { user, token: accessToken });
   } catch (error) {
     next(error);
   }

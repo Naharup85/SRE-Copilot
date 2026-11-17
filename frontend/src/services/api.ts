@@ -8,6 +8,9 @@ import type {
   DashboardStats,
   EnvironmentMetrics,
   ContainerLogEntry,
+  PrometheusHealth,
+  ApplicationMetrics,
+  HistoricalMetricsResult,
 } from '../types';
 
 // ─── Auth ─────────────────────────────────────────────────
@@ -53,6 +56,11 @@ export const applicationsApi = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/applications/${id}`);
   },
+
+  getMetrics: async (id: string): Promise<ApplicationMetrics> => {
+    const res = await apiClient.get(`/applications/${id}/metrics`);
+    return res.data.data;
+  },
 };
 
 // ─── Environments ──────────────────────────────────────────
@@ -86,8 +94,24 @@ export const environmentsApi = {
     return res.data.data;
   },
 
+  getHistoricalMetrics: async (
+    id: string,
+    params?: { start?: number; end?: number; step?: string },
+  ): Promise<HistoricalMetricsResult> => {
+    const res = await apiClient.get(`/environments/${id}/metrics/history`, { params });
+    return res.data.data;
+  },
+
   getContainerLogs: async (id: string, lines = 100): Promise<ContainerLogEntry[]> => {
     const res = await apiClient.get(`/environments/${id}/container-logs?lines=${lines}`);
+    return res.data.data;
+  },
+};
+
+// ─── Monitoring ────────────────────────────────────────────
+export const monitoringApi = {
+  getPrometheusHealth: async (): Promise<PrometheusHealth> => {
+    const res = await apiClient.get('/monitoring/prometheus/health');
     return res.data.data;
   },
 };

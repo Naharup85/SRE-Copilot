@@ -2,6 +2,7 @@
 
 export type SreProfile = 'basic' | 'standard';
 export type DeploymentProviderType = 'docker' | 'kubernetes';
+export type PrometheusHealthStatus = 'connected' | 'disconnected' | 'disabled' | 'unavailable';
 
 export interface User {
   id: string;
@@ -65,6 +66,48 @@ export interface Environment {
   updatedAt: string;
 }
 
+export interface PrometheusHealth {
+  enabled: boolean;
+  connected: boolean;
+  status: PrometheusHealthStatus;
+  lastSuccessfulCheck: string | null;
+  error?: string;
+}
+
+export interface ApplicationMetrics {
+  applicationId: string;
+  applicationName: string;
+  requestRate: number | null;
+  errorRate: number | null;
+  latencyP50Ms: number | null;
+  latencyP95Ms: number | null;
+  latencyP99Ms: number | null;
+  totalRequests: number | null;
+  totalErrors: number | null;
+  status: 'available' | 'partial' | 'unavailable';
+  collectedAt: string;
+}
+
+export interface HistoricalMetricPoint {
+  timestamp: number;
+  value: number;
+}
+
+export interface HistoricalMetricsSeries {
+  metric: string;
+  points: HistoricalMetricPoint[];
+}
+
+export interface HistoricalMetricsResult {
+  environmentId: string;
+  start: number;
+  end: number;
+  step: string;
+  series: HistoricalMetricsSeries[];
+  status: 'available' | 'empty' | 'unavailable';
+  collectedAt: string;
+}
+
 export interface EnvironmentMetrics {
   status: 'running' | 'stopped' | 'degraded' | 'unknown';
   uptimeSeconds: number;
@@ -79,6 +122,17 @@ export interface EnvironmentMetrics {
     statusCode?: number;
     latencyMs?: number;
     message?: string;
+  };
+  prometheus?: {
+    enabled: boolean;
+    connected: boolean;
+    status: PrometheusHealthStatus;
+    metrics?: {
+      requestRate: number | null;
+      errorRate: number | null;
+      latencyP95Ms: number | null;
+      totalRequests: number | null;
+    } | null;
   };
   collectedAt: string;
 }

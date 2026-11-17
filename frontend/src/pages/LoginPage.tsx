@@ -16,8 +16,8 @@ export function LoginPage() {
   const navigate = useNavigate();
 
   const handleFillDemo = () => {
-    setEmail('sre.admin@company.com');
-    setPassword('SreAdmin2026!');
+    setEmail('demo@example.com');
+    setPassword('Demo1234!');
     setName('Staff SRE');
   };
 
@@ -45,7 +45,7 @@ export function LoginPage() {
           password,
         });
       }
-
+      console.log("Res", res.user);
       login(res.token, res.user);
       navigate('/');
     } catch (err: any) {

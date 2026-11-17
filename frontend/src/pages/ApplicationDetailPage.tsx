@@ -19,9 +19,11 @@ import {
   ShieldCheck,
   Terminal,
   X,
-  Gauge
+  Gauge,
+  Radio,
+  TrendingUp,
 } from 'lucide-react';
-import { applicationsApi, environmentsApi, deploymentsApi } from '../services/api';
+import { applicationsApi, environmentsApi, deploymentsApi, monitoringApi } from '../services/api';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { CreateEnvironmentModal } from '../components/forms/CreateEnvironmentModal';
 import { TriggerDeploymentModal } from '../components/forms/TriggerDeploymentModal';
@@ -70,6 +72,21 @@ export function ApplicationDetailPage() {
     queryKey: ['environment-metrics', activeEnvId],
     queryFn: () => (activeEnvId ? environmentsApi.getMetrics(activeEnvId) : Promise.resolve(null)),
     enabled: !!activeEnvId,
+    refetchInterval: 5000,
+  });
+
+  // Fetch Prometheus server health
+  const { data: prometheusHealth } = useQuery({
+    queryKey: ['prometheus-health'],
+    queryFn: () => monitoringApi.getPrometheusHealth(),
+    refetchInterval: 10000,
+  });
+
+  // Fetch application-level Prometheus metrics
+  const { data: appMetrics, isLoading: appMetricsLoading } = useQuery({
+    queryKey: ['application-metrics', appId],
+    queryFn: () => applicationsApi.getMetrics(appId),
+    enabled: !!appId,
     refetchInterval: 5000,
   });
 
@@ -141,6 +158,41 @@ export function ApplicationDetailPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h1>{app.name}</h1>
+            {prometheusHealth && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 500,
+                  backgroundColor:
+                    prometheusHealth.status === 'connected'
+                      ? 'rgba(16, 185, 129, 0.15)'
+                      : prometheusHealth.status === 'disabled'
+                      ? 'rgba(156, 163, 175, 0.15)'
+                      : 'rgba(239, 68, 68, 0.15)',
+                  color:
+                    prometheusHealth.status === 'connected'
+                      ? '#34d399'
+                      : prometheusHealth.status === 'disabled'
+                      ? '#9ca3af'
+                      : '#f87171',
+                  border: `1px solid ${
+                    prometheusHealth.status === 'connected'
+                      ? 'rgba(16, 185, 129, 0.3)'
+                      : prometheusHealth.status === 'disabled'
+                      ? 'rgba(156, 163, 175, 0.3)'
+                      : 'rgba(239, 68, 68, 0.3)'
+                  }`,
+                }}
+              >
+                <Radio size={12} />
+                Prometheus: {prometheusHealth.status.toUpperCase()}
+              </span>
+            )}
           </div>
           <p>{app.description || 'Configured Git repository and multi-runtime target deployment environments'}</p>
         </div>
@@ -397,72 +449,143 @@ export function ApplicationDetailPage() {
               <span>Polling target runtime telemetry...</span>
             </div>
           ) : metrics ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-              <div className="deployment-meta-card">
-                <div className="deployment-meta-label">Runtime Status</div>
-                <div 
-                  className="deployment-meta-value"
-                  style={{
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    color: metrics.status === 'running' ? '#34d399' : metrics.status === 'degraded' ? '#fbbf24' : '#f87171',
-                  }}
-                >
-                  {metrics.status}
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Runtime Status</div>
+                  <div 
+                    className="deployment-meta-value"
+                    style={{
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      color: metrics.status === 'running' ? '#34d399' : metrics.status === 'degraded' ? '#fbbf24' : '#f87171',
+                    }}
+                  >
+                    {metrics.status}
+                  </div>
+                </div>
+
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Health Probe</div>
+                  <div className="deployment-meta-value">
+                    {metrics.httpProbe ? (
+                      <span style={{ color: metrics.httpProbe.status === 'ok' ? '#34d399' : '#f87171' }}>
+                        {metrics.httpProbe.status === 'ok' ? `HTTP 200 (${metrics.httpProbe.latencyMs}ms)` : 'Probe Failed'}
+                      </span>
+                    ) : metrics.healthStatus !== 'none' ? (
+                      <span style={{ textTransform: 'capitalize' }}>{metrics.healthStatus}</span>
+                    ) : (
+                      <span className="text-secondary">Self-Reported Ready</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Uptime</div>
+                  <div className="deployment-meta-value">
+                    {metrics.uptimeSeconds > 3600
+                      ? `${(metrics.uptimeSeconds / 3600).toFixed(1)} hrs`
+                      : metrics.uptimeSeconds > 60
+                      ? `${Math.floor(metrics.uptimeSeconds / 60)} min`
+                      : `${metrics.uptimeSeconds} sec`}
+                  </div>
+                </div>
+
+                {activeEnv.provider === 'docker' && (
+                  <>
+                    <div className="deployment-meta-card">
+                      <div className="deployment-meta-label">CPU Usage</div>
+                      <div className="deployment-meta-value">
+                        {metrics.cpuPercent.toFixed(2)}%
+                      </div>
+                    </div>
+
+                    <div className="deployment-meta-card">
+                      <div className="deployment-meta-label">Memory Usage</div>
+                      <div className="deployment-meta-value">
+                        {(metrics.memoryUsageBytes / (1024 * 1024)).toFixed(1)} MB ({metrics.memoryPercent.toFixed(1)}%)
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Restarts</div>
+                  <div className="deployment-meta-value">
+                    {metrics.restartCount}
+                  </div>
                 </div>
               </div>
 
-              <div className="deployment-meta-card">
-                <div className="deployment-meta-label">Health Probe</div>
-                <div className="deployment-meta-value">
-                  {metrics.httpProbe ? (
-                    <span style={{ color: metrics.httpProbe.status === 'ok' ? '#34d399' : '#f87171' }}>
-                      {metrics.httpProbe.status === 'ok' ? `HTTP 200 (${metrics.httpProbe.latencyMs}ms)` : 'Probe Failed'}
-                    </span>
-                  ) : metrics.healthStatus !== 'none' ? (
-                    <span style={{ textTransform: 'capitalize' }}>{metrics.healthStatus}</span>
+              {/* Standard SRE Prometheus Application Metrics */}
+              {activeEnv.sreProfile === 'standard' ? (
+                <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
+                      <TrendingUp size={14} style={{ color: '#a78bfa' }} />
+                      Standard SRE — Application Metrics (Prometheus)
+                    </div>
+                    {appMetrics?.collectedAt && (
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Collected: {new Date(appMetrics.collectedAt).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {appMetricsLoading ? (
+                    <div className="loading-page" style={{ padding: '12px' }}>
+                      <Loader2 size={14} className="spinner" />
+                      <span>Querying Prometheus metrics...</span>
+                    </div>
                   ) : (
-                    <span className="text-secondary">Self-Reported Ready</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                      <div className="deployment-meta-card">
+                        <div className="deployment-meta-label">Request Rate</div>
+                        <div className="deployment-meta-value">
+                          {appMetrics?.requestRate !== null && appMetrics?.requestRate !== undefined
+                            ? `${appMetrics.requestRate.toFixed(2)} req/s`
+                            : 'N/A'}
+                        </div>
+                      </div>
+
+                      <div className="deployment-meta-card">
+                        <div className="deployment-meta-label">Error Rate</div>
+                        <div className="deployment-meta-value">
+                          {appMetrics?.errorRate !== null && appMetrics?.errorRate !== undefined
+                            ? `${appMetrics.errorRate.toFixed(2)}%`
+                            : 'N/A'}
+                        </div>
+                      </div>
+
+                      <div className="deployment-meta-card">
+                        <div className="deployment-meta-label">Response Latency (p95)</div>
+                        <div className="deployment-meta-value">
+                          {appMetrics?.latencyP95Ms !== null && appMetrics?.latencyP95Ms !== undefined
+                            ? `${appMetrics.latencyP95Ms.toFixed(1)} ms`
+                            : 'N/A'}
+                        </div>
+                      </div>
+
+                      <div className="deployment-meta-card">
+                        <div className="deployment-meta-label">Total HTTP Requests</div>
+                        <div className="deployment-meta-value">
+                          {appMetrics?.totalRequests !== null && appMetrics?.totalRequests !== undefined
+                            ? appMetrics.totalRequests.toLocaleString()
+                            : 'N/A'}
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
-
-              <div className="deployment-meta-card">
-                <div className="deployment-meta-label">Uptime</div>
-                <div className="deployment-meta-value">
-                  {metrics.uptimeSeconds > 3600
-                    ? `${(metrics.uptimeSeconds / 3600).toFixed(1)} hrs`
-                    : metrics.uptimeSeconds > 60
-                    ? `${Math.floor(metrics.uptimeSeconds / 60)} min`
-                    : `${metrics.uptimeSeconds} sec`}
+              ) : (
+                <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <ShieldCheck size={13} style={{ color: '#fbbf24' }} />
+                    <span>Basic SRE Profile active: native runtime monitoring only. Prometheus application metrics and history are enabled under the Standard SRE profile.</span>
+                  </div>
                 </div>
-              </div>
-
-              {activeEnv.provider === 'docker' && (
-                <>
-                  <div className="deployment-meta-card">
-                    <div className="deployment-meta-label">CPU Usage</div>
-                    <div className="deployment-meta-value">
-                      {metrics.cpuPercent.toFixed(2)}%
-                    </div>
-                  </div>
-
-                  <div className="deployment-meta-card">
-                    <div className="deployment-meta-label">Memory Usage</div>
-                    <div className="deployment-meta-value">
-                      {(metrics.memoryUsageBytes / (1024 * 1024)).toFixed(1)} MB ({metrics.memoryPercent.toFixed(1)}%)
-                    </div>
-                  </div>
-                </>
               )}
-
-              <div className="deployment-meta-card">
-                <div className="deployment-meta-label">Restarts</div>
-                <div className="deployment-meta-value">
-                  {metrics.restartCount}
-                </div>
-              </div>
-            </div>
+            </>
           ) : (
             <div style={{ color: 'var(--text-secondary)', padding: '12px' }}>
               Telemetry unavailable for current target.

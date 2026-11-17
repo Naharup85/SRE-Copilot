@@ -17,6 +17,28 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: sre-copilot-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-7d}'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   backend:
     build:
       context: ./backend
@@ -25,10 +47,15 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - PROMETHEUS_ENABLED=true
     ports:
       - "3001:3001"
     depends_on:
       postgres:
+        condition: service_healthy
+      prometheus:
         condition: service_healthy
 
   frontend:
@@ -45,3 +72,5 @@ services:
 volumes:
   postgres_data:
     name: sre_copilot_pgdata
+  prometheus_data:
+    name: sre_copilot_prometheus_data

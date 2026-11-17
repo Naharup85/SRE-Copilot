@@ -78,8 +78,8 @@ npm run db:push
 npm run db:seed
 ```
 *Default Seed Credentials:*
-- **Email:** `sre.admin@company.com`
-- **Password:** `SreAdmin2026!`
+- **Email:** `demo@example.com`
+- **Password:** `Demo1234!`
 
 #### 3. Start Backend Server
 ```bash

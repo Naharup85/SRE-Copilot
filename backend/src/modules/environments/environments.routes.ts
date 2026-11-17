@@ -6,6 +6,7 @@ import {
   updateEnvironment,
   deleteEnvironment,
   getEnvironmentMetrics,
+  getEnvironmentMetricsHistory,
   getContainerLogs,
 } from './environments.controller';
 import { authenticate } from '../../middleware/authenticate';
@@ -25,6 +26,7 @@ export const environmentStandaloneRouter = Router();
 environmentStandaloneRouter.use(authenticate);
 environmentStandaloneRouter.get('/:id', getEnvironment);
 environmentStandaloneRouter.get('/:id/metrics', getEnvironmentMetrics);
+environmentStandaloneRouter.get('/:id/metrics/history', getEnvironmentMetricsHistory);
 environmentStandaloneRouter.get('/:id/container-logs', getContainerLogs);
 environmentStandaloneRouter.patch('/:id', validate(updateEnvironmentSchema), updateEnvironment);
 environmentStandaloneRouter.delete('/:id', deleteEnvironment);

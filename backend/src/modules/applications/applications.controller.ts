@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { applicationsService } from './applications.service';
+import { prometheusService } from '../../services/prometheus.service';
 import { validateUuid } from '../../utils/validate';
 import { sendCreated, sendSuccess } from '../../utils/response';
 
@@ -47,6 +48,17 @@ export const deleteApplication = async (req: Request, res: Response, next: NextF
     validateUuid(req.params.id, 'applicationId');
     await applicationsService.delete(req.user!.id, req.params.id);
     sendSuccess(res, { deleted: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getApplicationMetrics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    validateUuid(req.params.id, 'applicationId');
+    const app = await applicationsService.getById(req.user!.id, req.params.id);
+    const metrics = await prometheusService.getApplicationMetrics(app.id, app.name);
+    sendSuccess(res, metrics);
   } catch (error) {
     next(error);
   }

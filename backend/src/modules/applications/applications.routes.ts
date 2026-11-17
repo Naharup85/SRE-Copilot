@@ -5,6 +5,7 @@ import {
   getApplication,
   updateApplication,
   deleteApplication,
+  getApplicationMetrics,
 } from './applications.controller';
 import { authenticate } from '../../middleware/authenticate';
 import {validate} from '../../middleware/validate';
@@ -17,6 +18,7 @@ router.use(authenticate);
 router.post('/',validate(createApplicationSchema), createApplication);
 router.get('/', listApplications);
 router.get('/:id', getApplication);
+router.get('/:id/metrics', getApplicationMetrics);
 router.patch('/:id',validate(updateApplicationSchema), updateApplication);
 router.delete('/:id', deleteApplication);
 
