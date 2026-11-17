@@ -185,8 +185,8 @@ describe('Docker Providers and Resolvers', () => {
       const metrics = await monitoringProvider.getMetrics(nonexistentEnv);
       expect(metrics.status).toBe('stopped');
       expect(metrics.uptimeSeconds).toBe(0);
-      expect(metrics.cpuPercent).toBe(0);
-      expect(metrics.memoryPercent).toBe(0);
+      expect(metrics.cpuPercent).toBeNull();
+      expect(metrics.memoryPercent).toBeNull();
       expect(metrics.healthStatus).toBe('none');
       expect(metrics.collectedAt).toBeDefined();
     });

@@ -22,12 +22,22 @@ import {
   Gauge,
   Radio,
   TrendingUp,
+  AlertCircle,
 } from 'lucide-react';
 import { applicationsApi, environmentsApi, deploymentsApi, monitoringApi } from '../services/api';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { CreateEnvironmentModal } from '../components/forms/CreateEnvironmentModal';
 import { TriggerDeploymentModal } from '../components/forms/TriggerDeploymentModal';
 import type { Environment, ContainerLogEntry } from '../types';
+
+function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return 'N/A';
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
 
 export function ApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -491,23 +501,66 @@ export function ApplicationDetailPage() {
                   </div>
                 </div>
 
-                {activeEnv.provider === 'docker' && (
-                  <>
-                    <div className="deployment-meta-card">
-                      <div className="deployment-meta-label">CPU Usage</div>
-                      <div className="deployment-meta-value">
-                        {metrics.cpuPercent.toFixed(2)}%
-                      </div>
-                    </div>
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">CPU Usage</div>
+                  <div className="deployment-meta-value">
+                    {metrics.availability?.cpu === 'available' && metrics.cpuPercent !== null ? (
+                      <span>{metrics.cpuPercent.toFixed(2)}%</span>
+                    ) : (
+                      <span className="text-secondary" style={{ fontSize: '12px' }}>
+                        {activeEnv.provider === 'kubernetes' ? 'Unavailable (Metrics Server required)' : 'Unavailable'}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-                    <div className="deployment-meta-card">
-                      <div className="deployment-meta-label">Memory Usage</div>
-                      <div className="deployment-meta-value">
-                        {(metrics.memoryUsageBytes / (1024 * 1024)).toFixed(1)} MB ({metrics.memoryPercent.toFixed(1)}%)
-                      </div>
-                    </div>
-                  </>
-                )}
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Memory Usage</div>
+                  <div className="deployment-meta-value">
+                    {metrics.availability?.memory === 'available' && metrics.memoryUsageBytes !== null ? (
+                      <span>
+                        {formatBytes(metrics.memoryUsageBytes)}
+                        {metrics.memoryLimitBytes ? (
+                          <span className="text-secondary" style={{ fontSize: '12px' }}>
+                            {' '}/ {formatBytes(metrics.memoryLimitBytes)} ({metrics.memoryPercent?.toFixed(1)}%)
+                          </span>
+                        ) : (
+                          <span className="text-secondary" style={{ fontSize: '11px' }}> (No limit)</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-secondary" style={{ fontSize: '12px' }}>
+                        {activeEnv.provider === 'kubernetes' ? 'Unavailable (Metrics Server required)' : 'Unavailable'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Network (RX / TX)</div>
+                  <div className="deployment-meta-value">
+                    {metrics.availability?.network === 'available' && metrics.network ? (
+                      <span style={{ fontSize: '13px' }}>
+                        ↓ {formatBytes(metrics.network.receivedBytes)} / ↑ {formatBytes(metrics.network.transmittedBytes)}
+                      </span>
+                    ) : (
+                      <span className="text-secondary" style={{ fontSize: '12px' }}>Unavailable</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="deployment-meta-card">
+                  <div className="deployment-meta-label">Storage I/O (R / W)</div>
+                  <div className="deployment-meta-value">
+                    {metrics.availability?.storage === 'available' && metrics.storage ? (
+                      <span style={{ fontSize: '13px' }}>
+                        R: {formatBytes(metrics.storage.readBytes)} / W: {formatBytes(metrics.storage.writeBytes)}
+                      </span>
+                    ) : (
+                      <span className="text-secondary" style={{ fontSize: '12px' }}>Unavailable</span>
+                    )}
+                  </div>
+                </div>
 
                 <div className="deployment-meta-card">
                   <div className="deployment-meta-label">Restarts</div>
@@ -516,6 +569,87 @@ export function ApplicationDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Kubernetes Workload Replicas & Pods Breakdown */}
+              {activeEnv.provider === 'kubernetes' && metrics.kubernetes && (
+                <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
+                      <Layers size={14} style={{ color: '#38bdf8' }} />
+                      Kubernetes Workload Status — Replicas & Pods
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', fontSize: '12px' }}>
+                      <span className="badge badge-info">Desired: {metrics.kubernetes.desiredReplicas}</span>
+                      <span className="badge badge-success">Ready: {metrics.kubernetes.readyReplicas}</span>
+                      <span className="badge badge-success">Available: {metrics.kubernetes.availableReplicas}</span>
+                      {metrics.kubernetes.unavailableReplicas > 0 && (
+                        <span className="badge badge-error">Unavailable: {metrics.kubernetes.unavailableReplicas}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {metrics.message && (
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        fontSize: '12px', 
+                        padding: '8px 12px', 
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)', 
+                        border: '1px solid rgba(251, 191, 36, 0.25)', 
+                        borderRadius: '6px', 
+                        color: '#fbbf24',
+                        marginBottom: '12px'
+                      }}
+                    >
+                      <AlertCircle size={14} />
+                      <span>{metrics.message}</span>
+                    </div>
+                  )}
+
+                  {metrics.kubernetes.pods.length > 0 && (
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
+                      <table className="w-full text-left" style={{ fontSize: '12px', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: 'var(--surface-hover)', borderBottom: '1px solid var(--border-subtle)' }}>
+                            <th style={{ padding: '8px 12px' }}>Pod Name</th>
+                            <th style={{ padding: '8px 12px' }}>Phase</th>
+                            <th style={{ padding: '8px 12px' }}>Ready</th>
+                            <th style={{ padding: '8px 12px' }}>Restarts</th>
+                            <th style={{ padding: '8px 12px' }}>CPU (Cores)</th>
+                            <th style={{ padding: '8px 12px' }}>Memory</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metrics.kubernetes.pods.map((p) => (
+                            <tr key={p.podName} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                              <td style={{ padding: '8px 12px', fontFamily: 'monospace' }}>{p.podName}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span className={p.phase === 'Running' ? 'text-success' : 'text-warning'}>
+                                  {p.phase}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>{p.ready ? '✓ True' : '✗ False'}</td>
+                              <td style={{ padding: '8px 12px' }}>{p.restartCount}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                {p.cpuUsageCores !== null && p.cpuUsageCores !== undefined
+                                  ? `${p.cpuUsageCores} cores`
+                                  : '—'}
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                {p.memoryUsageBytes !== null && p.memoryUsageBytes !== undefined
+                                  ? formatBytes(p.memoryUsageBytes)
+                                  : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Standard SRE Prometheus Application Metrics */}
               {activeEnv.sreProfile === 'standard' ? (

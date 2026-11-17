@@ -67,6 +67,8 @@ export const getEnvironmentMetrics = async (req: Request, res: Response, next: N
     const env = await environmentsService.getById(req.user!.id, req.params.id);
     const monitoringProvider = resolveMonitoringProvider(env);
     const metrics = await monitoringProvider.getMetrics(env);
+    metrics.environmentId = env.id;
+    metrics.provider = env.provider as any;
 
     // If Standard SRE, enrich with Prometheus metrics when available
     if (env.sreProfile === 'standard') {

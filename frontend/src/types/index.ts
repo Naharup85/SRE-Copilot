@@ -108,15 +108,57 @@ export interface HistoricalMetricsResult {
   collectedAt: string;
 }
 
+export interface MetricAvailability {
+  cpu: 'available' | 'unavailable';
+  memory: 'available' | 'unavailable';
+  network: 'available' | 'unavailable';
+  storage: 'available' | 'unavailable';
+  metricsServer?: 'available' | 'unavailable' | 'not_applicable';
+}
+
+export interface NetworkMetrics {
+  receivedBytes: number | null;
+  transmittedBytes: number | null;
+}
+
+export interface StorageMetrics {
+  readBytes: number | null;
+  writeBytes: number | null;
+}
+
+export interface KubernetesPodMetrics {
+  podName: string;
+  phase: string;
+  ready: boolean;
+  restartCount: number;
+  startTime?: string;
+  cpuUsageCores?: number | null;
+  memoryUsageBytes?: number | null;
+}
+
+export interface KubernetesWorkloadMetrics {
+  desiredReplicas: number;
+  availableReplicas: number;
+  readyReplicas: number;
+  unavailableReplicas: number;
+  pods: KubernetesPodMetrics[];
+}
+
 export interface EnvironmentMetrics {
+  environmentId?: string;
+  provider?: DeploymentProviderType;
   status: 'running' | 'stopped' | 'degraded' | 'unknown';
   uptimeSeconds: number;
-  cpuPercent: number;
-  memoryUsageBytes: number;
-  memoryLimitBytes: number;
-  memoryPercent: number;
+  cpuPercent: number | null;
+  memoryUsageBytes: number | null;
+  memoryLimitBytes: number | null;
+  memoryPercent: number | null;
   restartCount: number;
   healthStatus: 'healthy' | 'unhealthy' | 'starting' | 'none';
+  network?: NetworkMetrics | null;
+  storage?: StorageMetrics | null;
+  kubernetes?: KubernetesWorkloadMetrics | null;
+  availability: MetricAvailability;
   httpProbe?: {
     status: 'ok' | 'failed' | 'skipped';
     statusCode?: number;
@@ -135,6 +177,7 @@ export interface EnvironmentMetrics {
     } | null;
   };
   collectedAt: string;
+  message?: string;
 }
 
 export interface ContainerLogEntry {
