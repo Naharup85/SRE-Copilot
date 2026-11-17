@@ -88,6 +88,54 @@ export interface ApplicationMetrics {
   collectedAt: string;
 }
 
+export interface ApmOverview {
+  applicationId: string;
+  applicationName: string;
+  requestRate: number | null;
+  requestsPerMinute: number | null;
+  errorRate: number | null;
+  averageLatencyMs: number | null;
+  latencyP50Ms: number | null;
+  latencyP95Ms: number | null;
+  latencyP99Ms: number | null;
+  totalRequests: number | null;
+  totalErrors: number | null;
+  status: 'available' | 'unavailable';
+  collectedAt: string;
+  message?: string;
+}
+
+export interface ApmEndpointMetric {
+  endpoint: string;
+  method: string;
+  requestCount: number;
+  errorCount: number;
+  errorRate: number;
+  avgLatencyMs: number | null;
+  latencyP95Ms: number | null;
+}
+
+export interface ApmDatabaseMetrics {
+  applicationId: string;
+  status: 'available' | 'unavailable';
+  queryCount: number | null;
+  queryRatePerSec: number | null;
+  averageDurationMs: number | null;
+  slowQueryCount: number | null;
+  queryFailureCount: number | null;
+  operations: Array<{ operation: string; count: number }>;
+  collectedAt: string;
+  message?: string;
+}
+
+export interface ApmDependencyMetric {
+  dependency: string;
+  requestCount: number;
+  errorCount: number;
+  avgLatencyMs: number | null;
+  status: 'healthy' | 'degraded' | 'unavailable';
+}
+
 export interface HistoricalMetricPoint {
   timestamp: number;
   value: number;

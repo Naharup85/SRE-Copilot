@@ -10,6 +10,10 @@ import type {
   ContainerLogEntry,
   PrometheusHealth,
   ApplicationMetrics,
+  ApmOverview,
+  ApmEndpointMetric,
+  ApmDatabaseMetrics,
+  ApmDependencyMetric,
   HistoricalMetricsResult,
 } from '../types';
 
@@ -59,6 +63,31 @@ export const applicationsApi = {
 
   getMetrics: async (id: string): Promise<ApplicationMetrics> => {
     const res = await apiClient.get(`/applications/${id}/metrics`);
+    return res.data.data;
+  },
+
+  getApm: async (id: string): Promise<ApmOverview> => {
+    const res = await apiClient.get(`/applications/${id}/apm`);
+    return res.data.data;
+  },
+
+  getApmEndpoints: async (id: string): Promise<{ applicationId: string; endpoints: ApmEndpointMetric[] }> => {
+    const res = await apiClient.get(`/applications/${id}/apm/endpoints`);
+    return res.data.data;
+  },
+
+  getApmDatabase: async (id: string): Promise<ApmDatabaseMetrics> => {
+    const res = await apiClient.get(`/applications/${id}/apm/database`);
+    return res.data.data;
+  },
+
+  getApmDependencies: async (id: string): Promise<{ applicationId: string; dependencies: ApmDependencyMetric[] }> => {
+    const res = await apiClient.get(`/applications/${id}/apm/dependencies`);
+    return res.data.data;
+  },
+
+  getApmHistory: async (id: string, params?: { start?: number; end?: number; step?: string }): Promise<HistoricalMetricsResult> => {
+    const res = await apiClient.get(`/applications/${id}/apm/history`, { params });
     return res.data.data;
   },
 };

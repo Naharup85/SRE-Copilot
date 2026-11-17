@@ -23,6 +23,8 @@ import {
   Radio,
   TrendingUp,
   AlertCircle,
+  Database,
+  Network,
 } from 'lucide-react';
 import { applicationsApi, environmentsApi, deploymentsApi, monitoringApi } from '../services/api';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -47,6 +49,7 @@ export function ApplicationDetailPage() {
   const [deployTargetEnv, setDeployTargetEnv] = useState<Environment | null>(null);
   const [selectedEnvForHistory, setSelectedEnvForHistory] = useState<string | null>(null);
   const [logsModalEnv, setLogsModalEnv] = useState<Environment | null>(null);
+  const [endpointSortField, setEndpointSortField] = useState<'requests' | 'errors' | 'latency'>('requests');
 
   // Fetch application details
   const { 
@@ -92,12 +95,33 @@ export function ApplicationDetailPage() {
     refetchInterval: 10000,
   });
 
-  // Fetch application-level Prometheus metrics
-  const { data: appMetrics, isLoading: appMetricsLoading } = useQuery({
-    queryKey: ['application-metrics', appId],
-    queryFn: () => applicationsApi.getMetrics(appId),
-    enabled: !!appId,
-    refetchInterval: 5000,
+  // Phase 2.3: APM Data Queries
+  const { data: apmOverview, isLoading: apmLoading } = useQuery({
+    queryKey: ['application-apm', appId],
+    queryFn: () => applicationsApi.getApm(appId),
+    enabled: !!appId && activeEnv?.sreProfile === 'standard',
+    refetchInterval: 10000,
+  });
+
+  const { data: apmEndpointsData } = useQuery({
+    queryKey: ['application-apm-endpoints', appId],
+    queryFn: () => applicationsApi.getApmEndpoints(appId),
+    enabled: !!appId && activeEnv?.sreProfile === 'standard',
+    refetchInterval: 10000,
+  });
+
+  const { data: apmDbData } = useQuery({
+    queryKey: ['application-apm-db', appId],
+    queryFn: () => applicationsApi.getApmDatabase(appId),
+    enabled: !!appId && activeEnv?.sreProfile === 'standard',
+    refetchInterval: 10000,
+  });
+
+  const { data: apmDepsData } = useQuery({
+    queryKey: ['application-apm-deps', appId],
+    queryFn: () => applicationsApi.getApmDependencies(appId),
+    enabled: !!appId && activeEnv?.sreProfile === 'standard',
+    refetchInterval: 10000,
   });
 
   // Fetch deployments for the active environment
@@ -651,61 +675,286 @@ export function ApplicationDetailPage() {
                 </div>
               )}
 
-              {/* Standard SRE Prometheus Application Metrics */}
+              {/* Standard SRE APM (Application Performance Monitoring) */}
               {activeEnv.sreProfile === 'standard' ? (
                 <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
                       <TrendingUp size={14} style={{ color: '#a78bfa' }} />
-                      Standard SRE — Application Metrics (Prometheus)
+                      Standard SRE — Application Performance Monitoring (APM)
                     </div>
-                    {appMetrics?.collectedAt && (
+                    {apmOverview?.collectedAt && (
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Collected: {new Date(appMetrics.collectedAt).toLocaleTimeString()}
+                        Collected: {new Date(apmOverview.collectedAt).toLocaleTimeString()}
                       </span>
                     )}
                   </div>
 
-                  {appMetricsLoading ? (
+                  {apmLoading ? (
                     <div className="loading-page" style={{ padding: '12px' }}>
                       <Loader2 size={14} className="spinner" />
-                      <span>Querying Prometheus metrics...</span>
+                      <span>Querying APM telemetry from Prometheus...</span>
                     </div>
+                  ) : apmOverview?.status === 'available' ? (
+                    <>
+                      {/* APM Overview KPI Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div className="deployment-meta-card">
+                          <div className="deployment-meta-label">Throughput</div>
+                          <div className="deployment-meta-value">
+                            {apmOverview.requestRate !== null ? (
+                              <span>
+                                {apmOverview.requestRate.toFixed(2)} req/s
+                                {apmOverview.requestsPerMinute !== null && (
+                                  <span className="text-secondary" style={{ fontSize: '11px', display: 'block' }}>
+                                    {apmOverview.requestsPerMinute.toFixed(0)} RPM
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              'N/A'
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="deployment-meta-card">
+                          <div className="deployment-meta-label">Error Rate</div>
+                          <div className="deployment-meta-value">
+                            {apmOverview.errorRate !== null ? (
+                              <span style={{ color: apmOverview.errorRate > 5 ? '#f87171' : apmOverview.errorRate > 0 ? '#fbbf24' : '#34d399' }}>
+                                {apmOverview.errorRate.toFixed(2)}%
+                              </span>
+                            ) : (
+                              'N/A'
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="deployment-meta-card">
+                          <div className="deployment-meta-label">Avg Latency</div>
+                          <div className="deployment-meta-value">
+                            {apmOverview.averageLatencyMs !== null ? `${apmOverview.averageLatencyMs.toFixed(1)} ms` : 'N/A'}
+                          </div>
+                        </div>
+
+                        <div className="deployment-meta-card">
+                          <div className="deployment-meta-label">P95 Latency</div>
+                          <div className="deployment-meta-value">
+                            {apmOverview.latencyP95Ms !== null ? `${apmOverview.latencyP95Ms.toFixed(1)} ms` : 'N/A'}
+                          </div>
+                        </div>
+
+                        <div className="deployment-meta-card">
+                          <div className="deployment-meta-label">P99 Latency</div>
+                          <div className="deployment-meta-value">
+                            {apmOverview.latencyP99Ms !== null ? `${apmOverview.latencyP99Ms.toFixed(1)} ms` : 'N/A'}
+                          </div>
+                        </div>
+
+                        <div className="deployment-meta-card">
+                          <div className="deployment-meta-label">Total Requests</div>
+                          <div className="deployment-meta-value">
+                            {apmOverview.totalRequests !== null ? apmOverview.totalRequests.toLocaleString() : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Endpoint Performance Table */}
+                      {apmEndpointsData && apmEndpointsData.endpoints.length > 0 && (
+                        <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
+                              <Activity size={14} style={{ color: '#38bdf8' }} />
+                              Endpoint Performance Breakdown
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', fontSize: '11px' }}>
+                              <span>Sort by:</span>
+                              <button 
+                                type="button" 
+                                className={`btn btn-xs ${endpointSortField === 'requests' ? 'btn-secondary' : 'btn-ghost'}`}
+                                onClick={() => setEndpointSortField('requests')}
+                              >
+                                Requests
+                              </button>
+                              <button 
+                                type="button" 
+                                className={`btn btn-xs ${endpointSortField === 'errors' ? 'btn-secondary' : 'btn-ghost'}`}
+                                onClick={() => setEndpointSortField('errors')}
+                              >
+                                Error Rate
+                              </button>
+                              <button 
+                                type="button" 
+                                className={`btn btn-xs ${endpointSortField === 'latency' ? 'btn-secondary' : 'btn-ghost'}`}
+                                onClick={() => setEndpointSortField('latency')}
+                              >
+                                Latency
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
+                            <table className="w-full text-left" style={{ fontSize: '12px', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ backgroundColor: 'var(--surface-hover)', borderBottom: '1px solid var(--border-subtle)' }}>
+                                  <th style={{ padding: '8px 12px' }}>Method</th>
+                                  <th style={{ padding: '8px 12px' }}>Endpoint</th>
+                                  <th style={{ padding: '8px 12px' }}>Requests</th>
+                                  <th style={{ padding: '8px 12px' }}>Errors</th>
+                                  <th style={{ padding: '8px 12px' }}>Error Rate</th>
+                                  <th style={{ padding: '8px 12px' }}>Avg Latency</th>
+                                  <th style={{ padding: '8px 12px' }}>P95 Latency</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[...apmEndpointsData.endpoints]
+                                  .sort((a, b) => {
+                                    if (endpointSortField === 'errors') return b.errorRate - a.errorRate;
+                                    if (endpointSortField === 'latency') return (b.latencyP95Ms ?? 0) - (a.latencyP95Ms ?? 0);
+                                    return b.requestCount - a.requestCount;
+                                  })
+                                  .map((ep) => (
+                                    <tr key={`${ep.method}-${ep.endpoint}`} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        <span className={`badge ${ep.method === 'GET' ? 'badge-info' : ep.method === 'POST' ? 'badge-success' : 'badge-warning'}`}>
+                                          {ep.method}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px 12px', fontFamily: 'monospace' }}>{ep.endpoint}</td>
+                                      <td style={{ padding: '8px 12px' }}>{ep.requestCount.toLocaleString()}</td>
+                                      <td style={{ padding: '8px 12px' }}>{ep.errorCount}</td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        <span style={{ color: ep.errorRate > 0 ? '#fbbf24' : '#34d399' }}>
+                                          {ep.errorRate.toFixed(2)}%
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        {ep.avgLatencyMs !== null ? `${ep.avgLatencyMs} ms` : '—'}
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        {ep.latencyP95Ms !== null ? `${ep.latencyP95Ms} ms` : '—'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Database & External Dependencies Performance Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                        {/* Database Operations */}
+                        <div className="card" style={{ padding: '16px', backgroundColor: 'var(--surface-card)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
+                            <Database size={14} style={{ color: '#fb923c' }} />
+                            Database Operations (PostgreSQL)
+                          </div>
+                          {apmDbData?.status === 'available' ? (
+                            <>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                                <div>
+                                  <div className="deployment-meta-label">Total Queries</div>
+                                  <div className="deployment-meta-value">{apmDbData.queryCount?.toLocaleString() ?? 0}</div>
+                                </div>
+                                <div>
+                                  <div className="deployment-meta-label">Avg Execution</div>
+                                  <div className="deployment-meta-value">
+                                    {apmDbData.averageDurationMs !== null ? `${apmDbData.averageDurationMs} ms` : '—'}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="deployment-meta-label">Slow Queries (&gt;100ms)</div>
+                                  <div className="deployment-meta-value" style={{ color: (apmDbData.slowQueryCount ?? 0) > 0 ? '#fbbf24' : 'inherit' }}>
+                                    {apmDbData.slowQueryCount ?? 0}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="deployment-meta-label">Query Failures</div>
+                                  <div className="deployment-meta-value" style={{ color: (apmDbData.queryFailureCount ?? 0) > 0 ? '#f87171' : 'inherit' }}>
+                                    {apmDbData.queryFailureCount ?? 0}
+                                  </div>
+                                </div>
+                              </div>
+                              {apmDbData.operations.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                  {apmDbData.operations.map((op) => (
+                                    <span key={op.operation} className="badge badge-secondary" style={{ fontSize: '11px' }}>
+                                      {op.operation}: {op.count}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                              No database telemetry recorded yet for this application context.
+                            </div>
+                          )}
+                        </div>
+
+                        {/* External Dependencies */}
+                        <div className="card" style={{ padding: '16px', backgroundColor: 'var(--surface-card)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
+                            <Network size={14} style={{ color: '#4ade80' }} />
+                            External Dependencies
+                          </div>
+                          {apmDepsData && apmDepsData.dependencies.length > 0 ? (
+                            <div style={{ overflowX: 'auto' }}>
+                              <table className="w-full text-left" style={{ fontSize: '12px', borderCollapse: 'collapse' }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <th style={{ padding: '6px 8px' }}>Service</th>
+                                    <th style={{ padding: '6px 8px' }}>Calls</th>
+                                    <th style={{ padding: '6px 8px' }}>Avg Latency</th>
+                                    <th style={{ padding: '6px 8px' }}>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {apmDepsData.dependencies.map((dep) => (
+                                    <tr key={dep.dependency} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                      <td style={{ padding: '6px 8px', fontWeight: 500 }}>{dep.dependency}</td>
+                                      <td style={{ padding: '6px 8px' }}>{dep.requestCount}</td>
+                                      <td style={{ padding: '6px 8px' }}>
+                                        {dep.avgLatencyMs !== null ? `${dep.avgLatencyMs} ms` : '—'}
+                                      </td>
+                                      <td style={{ padding: '6px 8px' }}>
+                                        <span className={`badge ${dep.status === 'healthy' ? 'badge-success' : dep.status === 'degraded' ? 'badge-warning' : 'badge-error'}`} style={{ textTransform: 'capitalize' }}>
+                                          {dep.status}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                              No external service dependency calls recorded yet.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                      <div className="deployment-meta-card">
-                        <div className="deployment-meta-label">Request Rate</div>
-                        <div className="deployment-meta-value">
-                          {appMetrics?.requestRate !== null && appMetrics?.requestRate !== undefined
-                            ? `${appMetrics.requestRate.toFixed(2)} req/s`
-                            : 'N/A'}
+                    <div 
+                      style={{ 
+                        padding: '16px', 
+                        backgroundColor: 'rgba(56, 189, 248, 0.08)', 
+                        border: '1px solid rgba(56, 189, 248, 0.2)', 
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px'
+                      }}
+                    >
+                      <AlertCircle size={16} style={{ color: '#38bdf8', marginTop: '2px', flexShrink: 0 }} />
+                      <div style={{ fontSize: '12px' }}>
+                        <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: '2px' }}>
+                          APM Telemetry Unavailable for This Workload
                         </div>
-                      </div>
-
-                      <div className="deployment-meta-card">
-                        <div className="deployment-meta-label">Error Rate</div>
-                        <div className="deployment-meta-value">
-                          {appMetrics?.errorRate !== null && appMetrics?.errorRate !== undefined
-                            ? `${appMetrics.errorRate.toFixed(2)}%`
-                            : 'N/A'}
-                        </div>
-                      </div>
-
-                      <div className="deployment-meta-card">
-                        <div className="deployment-meta-label">Response Latency (p95)</div>
-                        <div className="deployment-meta-value">
-                          {appMetrics?.latencyP95Ms !== null && appMetrics?.latencyP95Ms !== undefined
-                            ? `${appMetrics.latencyP95Ms.toFixed(1)} ms`
-                            : 'N/A'}
-                        </div>
-                      </div>
-
-                      <div className="deployment-meta-card">
-                        <div className="deployment-meta-label">Total HTTP Requests</div>
-                        <div className="deployment-meta-value">
-                          {appMetrics?.totalRequests !== null && appMetrics?.totalRequests !== undefined
-                            ? appMetrics.totalRequests.toLocaleString()
-                            : 'N/A'}
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                          {apmOverview?.message || 'No APM metrics recorded for this application. Ensure the application exposes Prometheus metrics or includes the x-application-id header on HTTP requests.'}
                         </div>
                       </div>
                     </div>
@@ -715,7 +964,7 @@ export function ApplicationDetailPage() {
                 <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
                     <ShieldCheck size={13} style={{ color: '#fbbf24' }} />
-                    <span>Basic SRE Profile active: native runtime monitoring only. Prometheus application metrics and history are enabled under the Standard SRE profile.</span>
+                    <span>Basic SRE Profile active: native runtime monitoring only. Advanced APM (throughput, latency, endpoints, DB, and external dependencies) is enabled under the Standard SRE profile.</span>
                   </div>
                 </div>
               )}

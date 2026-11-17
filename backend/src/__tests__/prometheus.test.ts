@@ -148,9 +148,10 @@ describe('Prometheus Integration & Metrics', () => {
       await api.get('/health');
 
       const metricsRes = await api.get('/metrics');
-      expect(metricsRes.text).toContain(
-        'sre_copilot_http_requests_total{method="GET",route="/health",status_code="200"}',
-      );
+      expect(metricsRes.text).toContain('sre_copilot_http_requests_total{');
+      expect(metricsRes.text).toContain('method="GET"');
+      expect(metricsRes.text).toContain('route="/health"');
+      expect(metricsRes.text).toContain('status_code="200"');
     });
 
     it('should record error count when requests fail with status >= 400', async () => {
@@ -279,7 +280,7 @@ describe('Prometheus Integration & Metrics', () => {
       // Mock health check
       mockClient.get.mockResolvedValueOnce({ status: 200, data: 'Healthy' });
 
-      // Mock 7 instant queries (requestRate, errorRateRaw, p50, p95, p99, totalRequests, totalErrors)
+      // Mock 8 instant queries (requestRate, errorRateRaw, p50, p95, p99, avgLatency, totalRequests, totalErrors)
       mockClient.get.mockResolvedValueOnce({
         status: 200,
         data: { status: 'success', data: { result: [{ value: [1, '15.2'] }] } },
@@ -299,6 +300,10 @@ describe('Prometheus Integration & Metrics', () => {
       mockClient.get.mockResolvedValueOnce({
         status: 200,
         data: { status: 'success', data: { result: [{ value: [1, '0.090'] }] } },
+      });
+      mockClient.get.mockResolvedValueOnce({
+        status: 200,
+        data: { status: 'success', data: { result: [{ value: [1, '0.020'] }] } },
       });
       mockClient.get.mockResolvedValueOnce({
         status: 200,

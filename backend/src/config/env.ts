@@ -21,6 +21,8 @@ const envSchema = z.object({
   PROMETHEUS_URL: z.string().default('http://localhost:9090'),
   PROMETHEUS_SCRAPE_INTERVAL: z.string().default('15s'),
   PROMETHEUS_RETENTION_TIME: z.string().default('7d'),
+  DB_SLOW_QUERY_THRESHOLD_MS: z.coerce.number().default(100),
+  APM_ENABLED: z.coerce.boolean().default(true),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });
