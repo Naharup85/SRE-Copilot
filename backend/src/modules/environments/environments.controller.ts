@@ -5,6 +5,7 @@ import { sendSuccess, sendCreated } from '../../utils/response';
 import { resolveMonitoringProvider } from '../../services/monitoring-provider.resolver';
 import { resolveLoggingProvider } from '../../services/logging-provider.resolver';
 import { prometheusService } from '../../services/prometheus.service';
+import { recordRuntimeMetricsToPrometheus } from '../../metrics';
 import { AppError } from '../../utils/errors';
 
 export const createEnvironment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -69,6 +70,13 @@ export const getEnvironmentMetrics = async (req: Request, res: Response, next: N
     const metrics = await monitoringProvider.getMetrics(env);
     metrics.environmentId = env.id;
     metrics.provider = env.provider as any;
+
+    // Record runtime infrastructure metrics into Prometheus gauges
+    recordRuntimeMetricsToPrometheus(env.applicationId, env.id, metrics, {
+      containerName: env.containerName || (env.targetConfig as any)?.containerName,
+      namespace: env.namespace || (env.targetConfig as any)?.namespace,
+      deploymentName: env.deploymentName || (env.targetConfig as any)?.deploymentName,
+    });
 
     // If Standard SRE, enrich with Prometheus metrics when available
     if (env.sreProfile === 'standard') {

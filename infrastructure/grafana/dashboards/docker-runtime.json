@@ -1,0 +1,317 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Container Status & Health",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "Container Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_status{app_id=~\"$app_id\", container_name=~\"$container\", status=\"running\"} == 1",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "STOPPED" }, "1": { "color": "green", "text": "RUNNING" } }, "type": "value" }
+          ],
+          "noValue": "STOPPED",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 2,
+      "title": "Health Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_health{app_id=~\"$app_id\", container_name=~\"$container\", health=\"healthy\"} == 1",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "semi-dark-orange", "text": "UNHEALTHY" }, "1": { "color": "green", "text": "HEALTHY" } }, "type": "value" }
+          ],
+          "noValue": "NONE / N/A",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 3,
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_uptime_seconds{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "unit": "s",
+          "noValue": "0s"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 4,
+      "title": "Restart Count",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_restart_count{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "unit": "short",
+          "noValue": "0"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "Compute & Memory Utilization",
+      "type": "row"
+    },
+    {
+      "id": 5,
+      "title": "Container CPU Usage (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_cpu_percent{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "legendFormat": "{{container_name}} CPU %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "percent",
+          "min": 0
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Container Memory (Used vs Configured Limit)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_memory_bytes{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "legendFormat": "{{container_name}} Memory Used",
+          "refId": "A"
+        },
+        {
+          "expr": "sre_copilot_docker_container_memory_limit_bytes{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "legendFormat": "{{container_name}} Memory Limit",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Memory Limit %",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_memory_percent{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 75 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Network & Disk I/O",
+      "type": "row"
+    },
+    {
+      "id": 8,
+      "title": "Network Traffic (Received / Transmitted)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "rate(sre_copilot_docker_container_network_rx_bytes{app_id=~\"$app_id\", container_name=~\"$container\"}[1m])",
+          "legendFormat": "{{container_name}} RX (Bps)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(sre_copilot_docker_container_network_tx_bytes{app_id=~\"$app_id\", container_name=~\"$container\"}[1m])",
+          "legendFormat": "{{container_name}} TX (Bps)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "Bps"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Storage Block I/O (Read / Write Total)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_docker_container_storage_read_bytes{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "legendFormat": "{{container_name}} Read",
+          "refId": "A"
+        },
+        {
+          "expr": "sre_copilot_docker_container_storage_write_bytes{app_id=~\"$app_id\", container_name=~\"$container\"}",
+          "legendFormat": "{{container_name}} Write",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "bytes"
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["sre-copilot", "docker", "runtime"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_docker_container_status, app_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Application ID",
+        "multi": true,
+        "name": "app_id",
+        "query": {
+          "query": "label_values(sre_copilot_docker_container_status, app_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_docker_container_status{app_id=~\"$app_id\"}, environment_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Environment ID",
+        "multi": true,
+        "name": "environment_id",
+        "query": {
+          "query": "label_values(sre_copilot_docker_container_status{app_id=~\"$app_id\"}, environment_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_docker_container_status{app_id=~\"$app_id\", environment_id=~\"$environment_id\"}, container_name)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Container",
+        "multi": true,
+        "name": "container",
+        "query": {
+          "query": "label_values(sre_copilot_docker_container_status{app_id=~\"$app_id\", environment_id=~\"$environment_id\"}, container_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+  },
+  "timezone": "browser",
+  "title": "SRE Copilot — Docker Runtime",
+  "uid": "sre-copilot-docker",
+  "version": 1
+}

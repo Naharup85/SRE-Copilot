@@ -9,6 +9,7 @@ import type {
   EnvironmentMetrics,
   ContainerLogEntry,
   PrometheusHealth,
+  GrafanaHealth,
   ApplicationMetrics,
   ApmOverview,
   ApmEndpointMetric,
@@ -141,6 +142,10 @@ export const environmentsApi = {
 export const monitoringApi = {
   getPrometheusHealth: async (): Promise<PrometheusHealth> => {
     const res = await apiClient.get('/monitoring/prometheus/health');
+    return res.data.data;
+  },
+  getGrafanaHealth: async (): Promise<GrafanaHealth> => {
+    const res = await apiClient.get('/monitoring/grafana/health');
     return res.data.data;
   },
 };

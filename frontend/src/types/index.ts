@@ -270,6 +270,22 @@ export interface DashboardStats {
   recentDeployments: Deployment[];
 }
 
+export interface GrafanaHealth {
+  enabled: boolean;
+  connected: boolean;
+  status: 'connected' | 'disconnected' | 'disabled' | 'unavailable';
+  url: string;
+  version?: string;
+  dashboards: {
+    infrastructure: string;
+    dockerRuntime: string;
+    kubernetesRuntime: string;
+    applicationApm: string;
+  };
+  error?: string;
+  message?: string;
+}
+
 export interface ApiSuccess<T> {
   success: true;
   data: T;

@@ -1,0 +1,418 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "APM Golden Signals Overview",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "Request Rate (RPS)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(sre_copilot_http_requests_total{app_id=~\"$app_id\"}[1m]))",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "unit": "reqps",
+          "noValue": "No Traffic"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 2,
+      "title": "Throughput (RPM)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(sre_copilot_http_requests_total{app_id=~\"$app_id\"}[1m])) * 60",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "teal", "mode": "fixed" },
+          "unit": "short",
+          "noValue": "0"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 3,
+      "title": "Error Rate (%)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(sre_copilot_http_errors_total{app_id=~\"$app_id\"}[5m])) / sum(rate(sre_copilot_http_requests_total{app_id=~\"$app_id\"}[5m])) * 100",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "noValue": "0.00%",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 4,
+      "title": "Average Latency",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(sre_copilot_http_request_duration_seconds_sum{app_id=~\"$app_id\"}[5m])) / sum(rate(sre_copilot_http_request_duration_seconds_count{app_id=~\"$app_id\"}[5m])) * 1000",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "purple", "mode": "fixed" },
+          "unit": "ms",
+          "noValue": "N/A"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 5,
+      "title": "p95 Latency",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(sre_copilot_http_request_duration_seconds_bucket{app_id=~\"$app_id\"}[5m])) by (le)) * 1000",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        }
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 6,
+      "title": "Total Requests / Errors",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(sre_copilot_http_requests_total{app_id=~\"$app_id\"})",
+          "legendFormat": "Requests",
+          "refId": "A",
+          "instant": true
+        },
+        {
+          "expr": "sum(sre_copilot_http_errors_total{app_id=~\"$app_id\"})",
+          "legendFormat": "Errors",
+          "refId": "B",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "HTTP Latency Distribution & Throughput Over Time",
+      "type": "row"
+    },
+    {
+      "id": 7,
+      "title": "Latency Percentiles (p50, p95, p99, Avg)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(sre_copilot_http_request_duration_seconds_bucket{app_id=~\"$app_id\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p50 Latency",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(sre_copilot_http_request_duration_seconds_bucket{app_id=~\"$app_id\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p95 Latency",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(sre_copilot_http_request_duration_seconds_bucket{app_id=~\"$app_id\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p99 Latency",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(sre_copilot_http_request_duration_seconds_sum{app_id=~\"$app_id\"}[5m])) / sum(rate(sre_copilot_http_request_duration_seconds_count{app_id=~\"$app_id\"}[5m])) * 1000",
+          "legendFormat": "Avg Latency",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Throughput by Status Code (RPS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (status_code) (rate(sre_copilot_http_requests_total{app_id=~\"$app_id\"}[1m]))",
+          "legendFormat": "Status {{status_code}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "stacking": { "group": "A", "mode": "normal" } },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Endpoint Performance Breakdown",
+      "type": "row"
+    },
+    {
+      "id": 9,
+      "title": "Request Rate by Route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (method, route) (rate(sre_copilot_http_requests_total{app_id=~\"$app_id\"}[5m]))",
+          "legendFormat": "{{method}} {{route}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "p95 Latency by Route",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, method, route) (rate(sre_copilot_http_request_duration_seconds_bucket{app_id=~\"$app_id\"}[5m]))) * 1000",
+          "legendFormat": "{{method}} {{route}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "title": "Database Query Performance",
+      "type": "row"
+    },
+    {
+      "id": 11,
+      "title": "Database Query Throughput & Slow Queries",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(sre_copilot_db_queries_total{app_id=~\"$app_id\"}[1m]))",
+          "legendFormat": "All Queries (QPS)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(sre_copilot_db_slow_queries_total{app_id=~\"$app_id\"}[1m]))",
+          "legendFormat": "Slow Queries (>100ms)",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(sre_copilot_db_query_errors_total{app_id=~\"$app_id\"}[1m]))",
+          "legendFormat": "Query Errors",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Database Average Duration by SQL Operation",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (operation) (rate(sre_copilot_db_query_duration_seconds_sum{app_id=~\"$app_id\"}[5m])) / sum by (operation) (rate(sre_copilot_db_query_duration_seconds_count{app_id=~\"$app_id\"}[5m])) * 1000",
+          "legendFormat": "Op: {{operation}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "ms"
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 104,
+      "title": "External Service Dependencies",
+      "type": "row"
+    },
+    {
+      "id": 13,
+      "title": "External Outbound Requests Rate (RPS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (dependency) (rate(sre_copilot_external_requests_total{app_id=~\"$app_id\"}[1m]))",
+          "legendFormat": "{{dependency}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "External Outbound Latency (Average ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (dependency) (rate(sre_copilot_external_request_duration_seconds_sum{app_id=~\"$app_id\"}[5m])) / sum by (dependency) (rate(sre_copilot_external_request_duration_seconds_count{app_id=~\"$app_id\"}[5m])) * 1000",
+          "legendFormat": "{{dependency}} Latency",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "ms"
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["sre-copilot", "apm", "performance"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_http_requests_total, app_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Application ID",
+        "multi": true,
+        "name": "app_id",
+        "query": {
+          "query": "label_values(sre_copilot_http_requests_total, app_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+  },
+  "timezone": "browser",
+  "title": "SRE Copilot — Application Performance Monitoring",
+  "uid": "sre-copilot-apm",
+  "version": 1
+}

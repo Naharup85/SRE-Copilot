@@ -1,0 +1,317 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Workload Replicas & Health Summary",
+      "type": "row"
+    },
+    {
+      "id": 1,
+      "title": "Desired Replicas",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "max(sre_copilot_kubernetes_deployment_replicas{type=\"desired\", app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"})",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "unit": "short",
+          "noValue": "N/A"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 2,
+      "title": "Ready Replicas",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "max(sre_copilot_kubernetes_deployment_replicas{type=\"ready\", app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"})",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "green", "mode": "fixed" },
+          "unit": "short",
+          "noValue": "0"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 3,
+      "title": "Available Replicas",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "max(sre_copilot_kubernetes_deployment_replicas{type=\"available\", app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"})",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "teal", "mode": "fixed" },
+          "unit": "short",
+          "noValue": "0"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 4,
+      "title": "Unavailable Replicas",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "max(sre_copilot_kubernetes_deployment_replicas{type=\"unavailable\", app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"})",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        }
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "id": 5,
+      "title": "Workload Uptime",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "max(sre_copilot_kubernetes_pod_uptime_seconds{app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"})",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "purple", "mode": "fixed" },
+          "unit": "s",
+          "noValue": "0s"
+        }
+      },
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center" }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "Pod Compute Resource Usage (Metrics Server)",
+      "type": "row"
+    },
+    {
+      "id": 6,
+      "title": "Pod CPU Usage (Cores)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_kubernetes_pod_cpu_cores{app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"}",
+          "legendFormat": "{{pod}} CPU",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "none",
+          "noValue": "Metrics Server Unavailable",
+          "min": 0
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Pod Memory Usage (Bytes)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_kubernetes_pod_memory_bytes{app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"}",
+          "legendFormat": "{{pod}} Memory",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "bytes",
+          "noValue": "Metrics Server Unavailable",
+          "min": 0
+        }
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "Pod Restarts & Lifecycle Inventory",
+      "type": "row"
+    },
+    {
+      "id": 8,
+      "title": "Pod Restarts Count",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_kubernetes_pod_restart_count{app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"}",
+          "legendFormat": "{{pod}} Restarts",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2 },
+          "unit": "short",
+          "min": 0
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Pod Phase & Readiness Status",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 14, "x": 10, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "expr": "sre_copilot_kubernetes_pod_status{app_id=~\"$app_id\", namespace=~\"$namespace\", deployment=~\"$deployment\"} == 1",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto" }
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["sre-copilot", "kubernetes", "runtime"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_kubernetes_deployment_replicas, app_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Application ID",
+        "multi": true,
+        "name": "app_id",
+        "query": {
+          "query": "label_values(sre_copilot_kubernetes_deployment_replicas, app_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_kubernetes_deployment_replicas{app_id=~\"$app_id\"}, environment_id)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Environment ID",
+        "multi": true,
+        "name": "environment_id",
+        "query": {
+          "query": "label_values(sre_copilot_kubernetes_deployment_replicas{app_id=~\"$app_id\"}, environment_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_kubernetes_deployment_replicas{app_id=~\"$app_id\"}, namespace)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Namespace",
+        "multi": true,
+        "name": "namespace",
+        "query": {
+          "query": "label_values(sre_copilot_kubernetes_deployment_replicas{app_id=~\"$app_id\"}, namespace)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "Prometheus" },
+        "definition": "label_values(sre_copilot_kubernetes_deployment_replicas{app_id=~\"$app_id\", namespace=~\"$namespace\"}, deployment)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Deployment",
+        "multi": true,
+        "name": "deployment",
+        "query": {
+          "query": "label_values(sre_copilot_kubernetes_deployment_replicas{app_id=~\"$app_id\", namespace=~\"$namespace\"}, deployment)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+  },
+  "timezone": "browser",
+  "title": "SRE Copilot — Kubernetes Runtime",
+  "uid": "sre-copilot-k8s",
+  "version": 1
+}

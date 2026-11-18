@@ -1,4 +1,4 @@
-import { Registry, collectDefaultMetrics, Counter, Histogram } from 'prom-client';
+import { Registry, collectDefaultMetrics, Counter, Histogram, Gauge } from 'prom-client';
 import type { Request, Response, NextFunction } from 'express';
 
 // Ensure singleton across module reloads in dev/test
@@ -270,5 +270,224 @@ export async function instrumentExternalCall<T>(
     });
 
     throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Docker Runtime Metrics (Gauges for Grafana & Prometheus)
+// ---------------------------------------------------------------------------
+export const dockerContainerCpuPercent = new Gauge({
+  name: 'sre_copilot_docker_container_cpu_percent',
+  help: 'Docker container CPU usage percentage (0-100)',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerMemoryBytes = new Gauge({
+  name: 'sre_copilot_docker_container_memory_bytes',
+  help: 'Docker container memory usage in bytes',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerMemoryLimitBytes = new Gauge({
+  name: 'sre_copilot_docker_container_memory_limit_bytes',
+  help: 'Docker container configured memory limit in bytes',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerMemoryPercent = new Gauge({
+  name: 'sre_copilot_docker_container_memory_percent',
+  help: 'Docker container memory utilization percentage of limit',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerNetworkRxBytes = new Gauge({
+  name: 'sre_copilot_docker_container_network_rx_bytes',
+  help: 'Docker container total received network bytes',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerNetworkTxBytes = new Gauge({
+  name: 'sre_copilot_docker_container_network_tx_bytes',
+  help: 'Docker container total transmitted network bytes',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerStorageReadBytes = new Gauge({
+  name: 'sre_copilot_docker_container_storage_read_bytes',
+  help: 'Docker container total block I/O read bytes',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerStorageWriteBytes = new Gauge({
+  name: 'sre_copilot_docker_container_storage_write_bytes',
+  help: 'Docker container total block I/O write bytes',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerUptimeSeconds = new Gauge({
+  name: 'sre_copilot_docker_container_uptime_seconds',
+  help: 'Docker container uptime in seconds',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerRestartCount = new Gauge({
+  name: 'sre_copilot_docker_container_restart_count',
+  help: 'Docker container restart count',
+  labelNames: ['app_id', 'environment_id', 'container_name'],
+  registers: [register],
+});
+
+export const dockerContainerStatus = new Gauge({
+  name: 'sre_copilot_docker_container_status',
+  help: 'Docker container current status (running, stopped, degraded, unknown)',
+  labelNames: ['app_id', 'environment_id', 'container_name', 'status'],
+  registers: [register],
+});
+
+export const dockerContainerHealth = new Gauge({
+  name: 'sre_copilot_docker_container_health',
+  help: 'Docker container health check status (healthy, unhealthy, starting, none)',
+  labelNames: ['app_id', 'environment_id', 'container_name', 'health'],
+  registers: [register],
+});
+
+// ---------------------------------------------------------------------------
+// 5. Kubernetes Runtime Metrics (Gauges for Grafana & Prometheus)
+// ---------------------------------------------------------------------------
+export const k8sDeploymentReplicas = new Gauge({
+  name: 'sre_copilot_kubernetes_deployment_replicas',
+  help: 'Kubernetes deployment replica counts by type',
+  labelNames: ['app_id', 'environment_id', 'namespace', 'deployment', 'type'],
+  registers: [register],
+});
+
+export const k8sPodStatus = new Gauge({
+  name: 'sre_copilot_kubernetes_pod_status',
+  help: 'Kubernetes pod phase and readiness state',
+  labelNames: ['app_id', 'environment_id', 'namespace', 'deployment', 'pod', 'phase', 'ready'],
+  registers: [register],
+});
+
+export const k8sPodRestartCount = new Gauge({
+  name: 'sre_copilot_kubernetes_pod_restart_count',
+  help: 'Kubernetes pod cumulative restart count',
+  labelNames: ['app_id', 'environment_id', 'namespace', 'deployment', 'pod'],
+  registers: [register],
+});
+
+export const k8sPodCpuCores = new Gauge({
+  name: 'sre_copilot_kubernetes_pod_cpu_cores',
+  help: 'Kubernetes pod CPU usage in cores from Metrics Server',
+  labelNames: ['app_id', 'environment_id', 'namespace', 'deployment', 'pod'],
+  registers: [register],
+});
+
+export const k8sPodMemoryBytes = new Gauge({
+  name: 'sre_copilot_kubernetes_pod_memory_bytes',
+  help: 'Kubernetes pod memory usage in bytes from Metrics Server',
+  labelNames: ['app_id', 'environment_id', 'namespace', 'deployment', 'pod'],
+  registers: [register],
+});
+
+export const k8sPodUptimeSeconds = new Gauge({
+  name: 'sre_copilot_kubernetes_pod_uptime_seconds',
+  help: 'Kubernetes workload uptime in seconds',
+  labelNames: ['app_id', 'environment_id', 'namespace', 'deployment'],
+  registers: [register],
+});
+
+/**
+ * Records runtime infrastructure metrics collected by DockerMonitoringProvider or KubernetesMonitoringProvider
+ * into Prometheus gauges for visualization in Grafana dashboards.
+ */
+export function recordRuntimeMetricsToPrometheus(
+  appId: string,
+  environmentId: string,
+  metrics: any,
+  envDetails?: { containerName?: string | null; namespace?: string | null; deploymentName?: string | null },
+): void {
+  try {
+    if (metrics.provider === 'docker') {
+      const containerName = envDetails?.containerName || metrics.environmentId || 'unknown';
+      const labels = { app_id: appId, environment_id: environmentId, container_name: containerName };
+
+      if (metrics.cpuPercent !== null && metrics.cpuPercent !== undefined) {
+        dockerContainerCpuPercent.set(labels, metrics.cpuPercent);
+      }
+      if (metrics.memoryUsageBytes !== null && metrics.memoryUsageBytes !== undefined) {
+        dockerContainerMemoryBytes.set(labels, metrics.memoryUsageBytes);
+      }
+      if (metrics.memoryLimitBytes !== null && metrics.memoryLimitBytes !== undefined) {
+        dockerContainerMemoryLimitBytes.set(labels, metrics.memoryLimitBytes);
+      }
+      if (metrics.memoryPercent !== null && metrics.memoryPercent !== undefined) {
+        dockerContainerMemoryPercent.set(labels, metrics.memoryPercent);
+      }
+      if (metrics.network) {
+        dockerContainerNetworkRxBytes.set(labels, metrics.network.receivedBytes || 0);
+        dockerContainerNetworkTxBytes.set(labels, metrics.network.transmittedBytes || 0);
+      }
+      if (metrics.storage) {
+        dockerContainerStorageReadBytes.set(labels, metrics.storage.readBytes || 0);
+        dockerContainerStorageWriteBytes.set(labels, metrics.storage.writeBytes || 0);
+      }
+      if (metrics.uptimeSeconds !== null && metrics.uptimeSeconds !== undefined) {
+        dockerContainerUptimeSeconds.set(labels, metrics.uptimeSeconds);
+      }
+      if (metrics.restartCount !== null && metrics.restartCount !== undefined) {
+        dockerContainerRestartCount.set(labels, metrics.restartCount);
+      }
+
+      // Record statuses (set 1 for current status, clean older if needed)
+      const statuses = ['running', 'stopped', 'degraded', 'unknown'];
+      for (const s of statuses) {
+        dockerContainerStatus.set({ ...labels, status: s }, s === metrics.status ? 1 : 0);
+      }
+
+      const healths = ['healthy', 'unhealthy', 'starting', 'none'];
+      for (const h of healths) {
+        dockerContainerHealth.set({ ...labels, health: h }, h === metrics.healthStatus ? 1 : 0);
+      }
+    } else if (metrics.provider === 'kubernetes') {
+      const namespace = envDetails?.namespace || 'default';
+      const deployment = envDetails?.deploymentName || 'unknown';
+      const baseLabels = { app_id: appId, environment_id: environmentId, namespace, deployment };
+
+      if (metrics.kubernetes) {
+        k8sDeploymentReplicas.set({ ...baseLabels, type: 'desired' }, metrics.kubernetes.desiredReplicas || 0);
+        k8sDeploymentReplicas.set({ ...baseLabels, type: 'ready' }, metrics.kubernetes.readyReplicas || 0);
+        k8sDeploymentReplicas.set({ ...baseLabels, type: 'available' }, metrics.kubernetes.availableReplicas || 0);
+        k8sDeploymentReplicas.set({ ...baseLabels, type: 'unavailable' }, metrics.kubernetes.unavailableReplicas || 0);
+
+        if (metrics.uptimeSeconds !== null && metrics.uptimeSeconds !== undefined) {
+          k8sPodUptimeSeconds.set(baseLabels, metrics.uptimeSeconds);
+        }
+
+        if (Array.isArray(metrics.kubernetes.pods)) {
+          for (const pod of metrics.kubernetes.pods) {
+            const podLabels = { ...baseLabels, pod: pod.podName };
+            k8sPodStatus.set({ ...podLabels, phase: pod.phase, ready: String(pod.ready) }, 1);
+            k8sPodRestartCount.set(podLabels, pod.restartCount || 0);
+            if (pod.cpuUsageCores !== null && pod.cpuUsageCores !== undefined) {
+              k8sPodCpuCores.set(podLabels, pod.cpuUsageCores);
+            }
+            if (pod.memoryUsageBytes !== null && pod.memoryUsageBytes !== undefined) {
+              k8sPodMemoryBytes.set(podLabels, pod.memoryUsageBytes);
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-blocking best-effort recording
   }
 }

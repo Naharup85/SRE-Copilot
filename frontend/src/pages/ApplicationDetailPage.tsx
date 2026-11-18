@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Database,
   Network,
+  LayoutDashboard,
 } from 'lucide-react';
 import { applicationsApi, environmentsApi, deploymentsApi, monitoringApi } from '../services/api';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -92,6 +93,13 @@ export function ApplicationDetailPage() {
   const { data: prometheusHealth } = useQuery({
     queryKey: ['prometheus-health'],
     queryFn: () => monitoringApi.getPrometheusHealth(),
+    refetchInterval: 10000,
+  });
+
+  // Phase 2.4: Fetch Grafana server health
+  const { data: grafanaHealth } = useQuery({
+    queryKey: ['grafana-health'],
+    queryFn: () => monitoringApi.getGrafanaHealth(),
     refetchInterval: 10000,
   });
 
@@ -968,6 +976,126 @@ export function ApplicationDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Phase 2.4: Grafana Dashboards Section */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
+                    <LayoutDashboard size={15} style={{ color: '#f59e0b' }} />
+                    Grafana Dashboards
+                    <span 
+                      style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        backgroundColor: grafanaHealth?.connected ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: grafanaHealth?.connected ? '#22c55e' : '#ef4444',
+                        border: `1px solid ${grafanaHealth?.connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                      }}
+                    >
+                      {grafanaHealth?.connected ? `CONNECTED (v${grafanaHealth.version || '11.1.0'})` : 'UNREACHABLE'}
+                    </span>
+                  </div>
+                  {grafanaHealth?.url && (
+                    <a
+                      href={grafanaHealth.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: '11px', color: 'var(--text-accent)', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                    >
+                      Open Grafana Server <ExternalLink size={11} />
+                    </a>
+                  )}
+                </div>
+
+                {activeEnv.sreProfile === 'standard' ? (
+                  <div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                      Contextual production dashboards provisioned automatically for Standard SRE workloads:
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                      {/* Dashboard 1: Infrastructure Overview */}
+                      <a
+                        href={grafanaHealth?.dashboards?.infrastructure || 'http://localhost:3000/d/sre-copilot-infra/infrastructure-overview'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 12px', gap: '4px', textDecoration: 'none', textAlign: 'left' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)' }}>Infrastructure Overview</span>
+                          <ExternalLink size={12} style={{ color: 'var(--text-muted)' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Prometheus TSDB, scrapers & platform node health
+                        </span>
+                      </a>
+
+                      {/* Dashboard 4: Application APM */}
+                      <a
+                        href={`${grafanaHealth?.dashboards?.applicationApm || 'http://localhost:3000/d/sre-copilot-apm/application-performance-monitoring'}?var-app_id=${appId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 12px', gap: '4px', textDecoration: 'none', textAlign: 'left' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)' }}>Application APM</span>
+                          <ExternalLink size={12} style={{ color: 'var(--text-muted)' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          HTTP Golden Signals, routes, database & external APIs
+                        </span>
+                      </a>
+
+                      {/* Dashboard 2: Docker Runtime (if Docker) */}
+                      {activeEnv.provider === 'docker' && (
+                        <a
+                          href={`${grafanaHealth?.dashboards?.dockerRuntime || 'http://localhost:3000/d/sre-copilot-docker/docker-runtime'}?var-app_id=${appId}&var-environment_id=${activeEnv.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-secondary"
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 12px', gap: '4px', textDecoration: 'none', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)' }}>Docker Runtime</span>
+                            <ExternalLink size={12} style={{ color: 'var(--text-muted)' }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            Container CPU %, memory limit %, network RX/TX & I/O
+                          </span>
+                        </a>
+                      )}
+
+                      {/* Dashboard 3: Kubernetes Runtime (if Kubernetes) */}
+                      {activeEnv.provider === 'kubernetes' && (
+                        <a
+                          href={`${grafanaHealth?.dashboards?.kubernetesRuntime || 'http://localhost:3000/d/sre-copilot-k8s/kubernetes-runtime'}?var-app_id=${appId}&var-environment_id=${activeEnv.id}&var-namespace=${activeEnv.namespace || 'default'}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-secondary"
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 12px', gap: '4px', textDecoration: 'none', textAlign: 'left' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)' }}>Kubernetes Runtime</span>
+                            <ExternalLink size={12} style={{ color: 'var(--text-muted)' }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            Replica state, pod CPU/memory, restarts & phase lifecycle
+                          </span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <ShieldCheck size={13} style={{ color: '#fbbf24' }} />
+                    <span>Basic SRE Profile active: native runtime monitoring is active without requiring Grafana. Dashboards are pre-configured for environments upgraded to Standard SRE.</span>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <div style={{ color: 'var(--text-secondary)', padding: '12px' }}>
