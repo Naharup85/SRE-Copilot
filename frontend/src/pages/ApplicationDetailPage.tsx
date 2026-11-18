@@ -103,6 +103,13 @@ export function ApplicationDetailPage() {
     refetchInterval: 10000,
   });
 
+  // Phase 2.5: Fetch Loki server health
+  const { data: lokiHealth } = useQuery({
+    queryKey: ['loki-health'],
+    queryFn: () => monitoringApi.getLokiHealth(),
+    refetchInterval: 10000,
+  });
+
   // Phase 2.3: APM Data Queries
   const { data: apmOverview, isLoading: apmLoading } = useQuery({
     queryKey: ['application-apm', appId],
@@ -994,7 +1001,20 @@ export function ApplicationDetailPage() {
                         border: `1px solid ${grafanaHealth?.connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
                       }}
                     >
-                      {grafanaHealth?.connected ? `CONNECTED (v${grafanaHealth.version || '11.1.0'})` : 'UNREACHABLE'}
+                      GRAFANA: {grafanaHealth?.connected ? `CONNECTED (v${grafanaHealth.version || '11.1.0'})` : 'UNREACHABLE'}
+                    </span>
+                    <span 
+                      style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        backgroundColor: lokiHealth?.connected ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: lokiHealth?.connected ? '#22c55e' : '#ef4444',
+                        border: `1px solid ${lokiHealth?.connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                      }}
+                    >
+                      LOKI: {lokiHealth?.connected ? 'READY' : 'UNREACHABLE'}
                     </span>
                   </div>
                   {grafanaHealth?.url && (
@@ -1047,6 +1067,23 @@ export function ApplicationDetailPage() {
                         </div>
                         <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                           HTTP Golden Signals, routes, database & external APIs
+                        </span>
+                      </a>
+
+                      {/* Dashboard 5: Application Logs (Loki) */}
+                      <a
+                        href={`${grafanaHealth?.dashboards?.applicationLogs || 'http://localhost:3000/d/sre-copilot-logs/application-logs'}?var-app_id=${appId}&var-environment_id=${activeEnv.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary"
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 12px', gap: '4px', textDecoration: 'none', textAlign: 'left' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)' }}>Application Logs (Loki)</span>
+                          <ExternalLink size={12} style={{ color: 'var(--text-muted)' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          Aggregated stdout/stderr streams, LogQL filters & error analysis
                         </span>
                       </a>
 
@@ -1261,21 +1298,35 @@ export function ApplicationDetailPage() {
               )}
             </div>
 
-            <div className="modal-footer">
-              <button 
-                type="button" 
-                className="btn btn-secondary btn-sm"
-                onClick={() => refetchContainerLogs()}
-              >
-                Refresh
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-primary btn-sm"
-                onClick={() => setLogsModalEnv(null)}
-              >
-                Close
-              </button>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {logsModalEnv.sreProfile === 'standard' && (
+                  <a
+                    href={`${grafanaHealth?.dashboards?.applicationLogs || 'http://localhost:3000/d/sre-copilot-logs/application-logs'}?var-app_id=${appId}&var-environment_id=${logsModalEnv.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '12px', color: 'var(--text-accent)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                  >
+                    Explore in Centralized Loki Logs <ExternalLink size={12} />
+                  </a>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => refetchContainerLogs()}
+                >
+                  Refresh
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setLogsModalEnv(null)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

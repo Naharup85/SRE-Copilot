@@ -25,6 +25,8 @@ const envSchema = z.object({
   APM_ENABLED: z.coerce.boolean().default(true),
   GRAFANA_ENABLED: z.coerce.boolean().default(true),
   GRAFANA_URL: z.string().default('http://localhost:3000'),
+  LOKI_ENABLED: z.coerce.boolean().default(true),
+  LOKI_URL: z.string().default('http://localhost:3100'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

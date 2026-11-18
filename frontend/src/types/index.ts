@@ -281,7 +281,18 @@ export interface GrafanaHealth {
     dockerRuntime: string;
     kubernetesRuntime: string;
     applicationApm: string;
+    applicationLogs?: string;
   };
+  error?: string;
+  message?: string;
+}
+
+export interface LokiHealth {
+  enabled: boolean;
+  connected: boolean;
+  status: 'connected' | 'disconnected' | 'disabled' | 'unavailable';
+  url: string;
+  dashboardUrl: string;
   error?: string;
   message?: string;
 }

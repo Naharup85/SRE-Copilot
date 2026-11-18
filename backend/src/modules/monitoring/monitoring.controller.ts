@@ -19,6 +19,7 @@ export const getGrafanaHealth = async (_req: Request, res: Response, _next?: Nex
     dockerRuntime: `${env.GRAFANA_URL}/d/sre-copilot-docker/docker-runtime`,
     kubernetesRuntime: `${env.GRAFANA_URL}/d/sre-copilot-k8s/kubernetes-runtime`,
     applicationApm: `${env.GRAFANA_URL}/d/sre-copilot-apm/application-performance-monitoring`,
+    applicationLogs: `${env.GRAFANA_URL}/d/sre-copilot-logs/application-logs`,
   };
 
   if (!env.GRAFANA_ENABLED) {
@@ -53,6 +54,44 @@ export const getGrafanaHealth = async (_req: Request, res: Response, _next?: Nex
       url: env.GRAFANA_URL,
       dashboards,
       error: error.message || 'Could not connect to Grafana server',
+    });
+  }
+};
+
+export const getLokiHealth = async (_req: Request, res: Response, _next?: NextFunction): Promise<void> => {
+  const dashboardUrl = `${env.GRAFANA_URL}/d/sre-copilot-logs/application-logs`;
+
+  if (!env.LOKI_ENABLED) {
+    sendSuccess(res, {
+      enabled: false,
+      connected: false,
+      status: 'disabled',
+      url: env.LOKI_URL,
+      dashboardUrl,
+      message: 'Loki integration is disabled in configuration',
+    });
+    return;
+  }
+
+  try {
+    const response = await axios.get(`${env.LOKI_URL}/ready`, { timeout: 3000 });
+    const isReady = response.status === 200 && (typeof response.data === 'string' ? response.data.trim() === 'ready' : true);
+
+    sendSuccess(res, {
+      enabled: true,
+      connected: isReady,
+      status: isReady ? 'connected' : 'disconnected',
+      url: env.LOKI_URL,
+      dashboardUrl,
+    });
+  } catch (error: any) {
+    sendSuccess(res, {
+      enabled: true,
+      connected: false,
+      status: 'disconnected',
+      url: env.LOKI_URL,
+      dashboardUrl,
+      error: error.message || 'Could not connect to Loki server',
     });
   }
 };

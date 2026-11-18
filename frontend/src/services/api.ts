@@ -10,6 +10,7 @@ import type {
   ContainerLogEntry,
   PrometheusHealth,
   GrafanaHealth,
+  LokiHealth,
   ApplicationMetrics,
   ApmOverview,
   ApmEndpointMetric,
@@ -146,6 +147,10 @@ export const monitoringApi = {
   },
   getGrafanaHealth: async (): Promise<GrafanaHealth> => {
     const res = await apiClient.get('/monitoring/grafana/health');
+    return res.data.data;
+  },
+  getLokiHealth: async (): Promise<LokiHealth> => {
+    const res = await apiClient.get('/monitoring/loki/health');
     return res.data.data;
   },
 };
